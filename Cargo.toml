@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "crates/dioxus-camera",
+    "crates/dioxus-fcm",
+    "crates/dioxus-microphone",
+    "test-app",
+]
+resolver = "2"
+
+[workspace.dependencies]
+dioxus-fcm = {path = "crates/dioxus-fcm", version = "0.1.0" }
+dioxus = "0.7"
