@@ -1,0 +1,17 @@
+[package]
+name = "dioxus-fcm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+once_cell = "1"
+crossbeam-channel = "0.5"   # thread-safe token delivery to Rust
+tracing = { version = "0.1.44", features = ["log"]}
+manganis = "=0.8.0-alpha.0"
+
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+ndk-context = "0.1"
+
+[target.'cfg(target_os = "ios")'.dependencies]
+# FFI uses extern "C", no crate needed

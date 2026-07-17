@@ -1,0 +1,33 @@
+[application]
+
+[android.permissions]
+"android.permission.INTERNET" = { description = "Network access for push notifications" }
+"android.permission.POST_NOTIFICATIONS" = { description = "Show push notifications" }
+
+[android]
+custom_manifest = "android/AndroidManifest.xml"
+
+[web.app]
+
+# HTML title tag content
+title = "test-app"
+
+# include `assets` in web platform
+[web.resource]
+
+# Additional CSS style files
+style = []
+
+# Additional JavaScript files
+script = []
+
+[web.resource.dev]
+
+# Javascript code file
+# serve: [dev-server] only
+script = []
+
+[bundle]
+identifier = "com.example.TestApp"
+publisher = "ExampleLabs"
+icon = ["assets/icon.png"]

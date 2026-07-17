@@ -1,0 +1,31 @@
+[package]
+name = "test-app"
+version = "0.1.0"
+authors = ["David Wild <you@example.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dioxus = { workspace = true, features = [] }
+dioxus-fcm = { workspace = true}
+# fcm-messaging-core
+async-trait = "0.1"
+futures-core = "0.3"
+thiserror = "2"
+
+# platform crates additionally:
+tokio = { version = "1", features = ["sync"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures-util = "0.3"
+once_cell = "1"
+tracing = { version = "0.1.44", features = ["log"], optional = true}
+
+[features]
+default = ["mobile", "tracing"]
+# The feature that are only required for the web = ["dioxus/web"] build target should be optional and only enabled in the web = ["dioxus/web"] feature
+web = ["dioxus/web"]
+# The feature that are only required for the desktop = ["dioxus/desktop"] build target should be optional and only enabled in the desktop = ["dioxus/desktop"] feature
+desktop = ["dioxus/desktop"]
+# The feature that are only required for the mobile = ["dioxus/mobile"] build target should be optional and only enabled in the mobile = ["dioxus/mobile"] feature
+mobile = ["dioxus/mobile"]
