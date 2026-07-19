@@ -1,6 +1,14 @@
 use jni::JNIEnv;
 use jni::objects::{JClass, JObject, JString, JThrowable, JValue};
 
+use std::sync::Mutex;
+use std::time::Duration;
+use tokio::sync::oneshot;
+
+// Mutex::new is const — no once_cell needed
+static PENDING_TOKEN: Mutex<Option<oneshot::Sender<String>>> = Mutex::new(None);
+static PENDING_PERMISSION: Mutex<Option<oneshot::Sender<bool>>> = Mutex::new(None);
+
 /// Package baked in at build time from WRY_ANDROID_PACKAGE.
 /// Falls back for non-dx builds / IDE analysis.
 const ANDROID_PACKAGE: &str = match option_env!("FCM_ANDROID_PACKAGE") {
@@ -13,55 +21,73 @@ fn fcm_class_path() -> String {
     format!("{}/FcmService", ANDROID_PACKAGE.replace('.', "/"))
 }
 /// Called FROM Kotlin when a token is obtained or refreshed.
-/// JNI name must match: Java_com_yourapp_FcmService_nativeOnToken
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_dioxus_main_FcmServiceKt_nativeOnToken(
+pub extern "system" fn Java_dev_dioxus_main_FcmService_nativeOnToken(
     mut env: JNIEnv,
     _class: JClass,
     token: JString,
 ) {
-    tracing::info!("🔥 nativeOnToken CALLED");
     match env.get_string(&token) {
         Ok(s) => {
             let token: String = s.into();
-            tracing::info!("🔥 FCM TOKEN: {token}");
-            crate::on_native_token(token);
+            // take() first, drop guard, then send (edition-safe, no lock held during send)
+            let tx = PENDING_TOKEN.lock().unwrap().take();
+            if let Some(tx) = tx {
+                let _ = tx.send(token.clone()); // Err = receiver timed out, fine
+            }
+            crate::on_native_token(token); // keep your broadcast for refresh events
         }
         Err(e) => tracing::error!("nativeOnToken get_string failed: {e:?}"),
     }
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_dioxus_main_FcmServiceKt_nativeOnError(
+pub extern "system" fn Java_dev_dioxus_main_FcmService_nativeOnError(
     mut env: JNIEnv,
     _class: JClass,
     msg: JString,
 ) {
     if let Ok(s) = env.get_string(&msg) {
-        crate::on_native_error(s.into());
+        let msg: String = s.into();
+        // Dropping the sender wakes the awaiter with RecvError → returns None
+        let _ = PENDING_TOKEN.lock().unwrap().take();
+        crate::on_native_error(msg);
     }
 }
 
 /// Ask the Kotlin side to fetch the FCM token.
-pub fn request_token() {
+pub async fn request_token() -> Option<String> {
+    let (tx, rx) = oneshot::channel();
+    *PENDING_TOKEN.lock().unwrap() = Some(tx);
+
+    fire_request_token(); // old body, returns ()
+
+    match tokio::time::timeout(Duration::from_secs(15), rx).await {
+        Ok(Ok(token)) => Some(token),
+        Ok(Err(_)) => None, // nativeOnError dropped the sender
+        Err(_) => {
+            *PENDING_TOKEN.lock().unwrap() = None; // don't leak the slot
+            tracing::error!("request_token timed out");
+            None
+        }
+    }
+}
+
+fn fire_request_token() {
     let ctx = ndk_context::android_context();
     let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.unwrap();
     let mut env = vm.attach_current_thread().unwrap();
+    let context = unsafe { JObject::from_raw(ctx.context().cast()) };
 
-    tracing::debug!("calling FcmService.requestToken");
-
-    let context = unsafe { jni::objects::JObject::from_raw(ctx.context().cast()) };
-    match env.call_static_method(
-        &fcm_class_path(),
+    if let Err(e) = env.call_static_method(
+        fcm_class_path(),
         "requestToken",
         "(Landroid/content/Context;)V",
         &[(&context).into()],
     ) {
-        Ok(_) => tracing::debug!("requestToken invoked successfully"),
-        Err(e) => {
-            let detail = describe_pending_exception(&mut env);
-            tracing::error!("requestToken failed: {e:?} | java: {detail}");
-        }
+        let detail = describe_pending_exception(&mut env);
+        tracing::error!("requestToken failed: {e:?} | java: {detail}");
+        *PENDING_TOKEN.lock().unwrap() = None; // fail fast, wake the awaiter
     }
 }
 
@@ -129,7 +155,8 @@ fn try_call_via_classloader(env: &mut JNIEnv) -> Option<String> {
         };
 
     // classLoader.loadClass("com.example.TestApp.FcmService")  (note: DOTS, not slashes)
-    let class_name = match env.new_string("com.example.TestApp.FcmService") {
+    let dotted = format!("{}.FcmService", ANDROID_PACKAGE);
+    let class_name = match env.new_string(&dotted) {
         Ok(s) => s,
         Err(e) => {
             tracing::error!("new_string failed: {e:?}");
@@ -249,27 +276,77 @@ pub fn init_fcm() {
     }
 }
 
-/// Ask Kotlin to show the Notification Permission prompt
-pub fn ask_notification_permission() {
+pub async fn request_notification_permission() -> bool {
+    if notifications_enabled() {
+        return true; // already granted, no dialog needed
+    }
+
+    let (tx, rx) = oneshot::channel();
+    *PENDING_PERMISSION.lock().unwrap() = Some(tx);
+
+    if !fire_permission_request() {
+        *PENDING_PERMISSION.lock().unwrap() = None;
+        return false;
+    }
+
+    // Generous timeout — a human is staring at a dialog
+    match tokio::time::timeout(Duration::from_secs(120), rx).await {
+        Ok(Ok(granted)) => granted,
+        _ => {
+            *PENDING_PERMISSION.lock().unwrap() = None;
+            false
+        }
+    }
+}
+
+fn fire_permission_request() -> bool {
     let ctx = ndk_context::android_context();
     let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.unwrap();
     let mut env = vm.attach_current_thread().unwrap();
-
-    tracing::debug!("triggering Android Notification Permission");
-
-    // "dev.dioxus.main" -> "dev/dioxus/main/MainActivity"
-    let main_activity_path = format!("{}/MainActivity", ANDROID_PACKAGE.replace('.', "/"));
+    let activity = unsafe { JObject::from_raw(ctx.context().cast()) };
 
     match env.call_static_method(
-        main_activity_path,
-        "triggerNotificationPermission",
-        "()V",
-        &[],
+        fcm_class_path(), // ← was hardcoded "dev/dioxus/main/FcmService"
+        "requestNotificationPermission",
+        "(Landroid/app/Activity;)V",
+        &[JValue::Object(&activity)],
     ) {
-        Ok(_) => tracing::debug!("Permission prompt triggered successfully"),
+        Ok(_) => true,
         Err(e) => {
             let detail = describe_pending_exception(&mut env);
-            tracing::error!("Permission trigger failed: {e:?} | java: {detail}");
+            tracing::error!("requestNotificationPermission failed: {e:?} | java: {detail}");
+            false
         }
+    }
+}
+
+/// Synchronous — safe to call anywhere, no dialog.
+pub fn notifications_enabled() -> bool {
+    let ctx = ndk_context::android_context();
+    let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.unwrap();
+    let mut env = vm.attach_current_thread().unwrap();
+    let context = unsafe { JObject::from_raw(ctx.context().cast()) };
+
+    env.call_static_method(
+        fcm_class_path(),
+        "notificationsEnabled",
+        "(Landroid/content/Context;)Z",
+        &[(&context).into()],
+    )
+    .and_then(|v| v.z())
+    .unwrap_or(false)
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_dev_dioxus_main_FcmService_nativeOnPermissionResult(
+    _env: JNIEnv,
+    _class: JClass,
+    granted: jni::sys::jboolean,
+) {
+    let granted = granted != 0;
+    tracing::info!("🔔 Notification permission granted: {granted}");
+    let tx = PENDING_PERMISSION.lock().unwrap().take();
+    if let Some(tx) = tx {
+        let _ = tx.send(granted);
     }
 }

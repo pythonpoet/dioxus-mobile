@@ -36,26 +36,77 @@ pub(crate) fn on_native_error(msg: String) {
 
 // ---- Public API used by your Dioxus app ----
 
-/// Kick off registration. Native layer will call back with a token.
-pub fn request_token() {
-    #[cfg(target_os = "android")]
-    android::request_token();
-    #[cfg(target_os = "ios")]
-    ios::request_token();
-}
-pub fn kotlin_available() {
-    #[cfg(target_os = "android")]
-    android::kotlin_available();
-    // #[cfg(target_os = "ios")]
-    // ios::request_token();
+// ---- Public API used by your Dioxus app ----
+
+/// Fetch the FCM token. Resolves once Firebase delivers (or fails).
+#[cfg(target_os = "android")]
+pub async fn request_token() -> Option<String> {
+    android::request_token().await
 }
 
-/// Non-blocking: get the cached token if we already have one.
-pub fn cached_token() -> Option<String> {
-    CURRENT_TOKEN.lock().unwrap().clone()
+#[cfg(target_os = "ios")]
+pub async fn request_token() -> Option<String> {
+    todo!("FCM token fetch is not implemented for iOS yet")
 }
 
-/// Receive token events (new token / refresh / error) in an async loop.
-pub fn events() -> Receiver<TokenEvent> {
-    TOKEN_CHANNEL.1.clone()
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub async fn request_token() -> Option<String> {
+    None
+}
+
+/// Request notification permission. Resolves with the user's choice.
+#[cfg(target_os = "android")]
+pub async fn request_notification_permission() -> bool {
+    android::request_notification_permission().await
+}
+
+#[cfg(target_os = "ios")]
+pub async fn request_notification_permission() -> bool {
+    todo!("notification permission request is not implemented for iOS yet")
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub async fn request_notification_permission() -> bool {
+    false
+}
+
+/// Synchronous permission check — no dialog.
+#[cfg(target_os = "android")]
+pub fn has_notification_permission() -> bool {
+    android::notifications_enabled()
+}
+
+#[cfg(target_os = "ios")]
+pub fn has_notification_permission() -> bool {
+    todo!("notification permission check is not implemented for iOS yet")
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub fn has_notification_permission() -> bool {
+    false
+}
+
+/// Initialize Firebase. Call once at startup.
+#[cfg(target_os = "android")]
+pub fn init_fcm() {
+    android::init_fcm();
+}
+
+#[cfg(target_os = "ios")]
+pub fn init_fcm() {
+    todo!("Firebase init is not implemented for iOS yet")
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub fn init_fcm() {}
+
+/// Probe: is the Kotlin side reachable? Android-only by nature.
+#[cfg(target_os = "android")]
+pub fn kotlin_available() -> Option<String> {
+    android::kotlin_available()
+}
+
+#[cfg(not(target_os = "android"))]
+pub fn kotlin_available() -> Option<String> {
+    None // there's no Kotlin on iOS/desktop — None is honest here
 }

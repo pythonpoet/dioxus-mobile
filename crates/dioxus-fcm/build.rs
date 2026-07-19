@@ -69,7 +69,7 @@ fn main() {
     apply_google_services_plugin(&app_module);
 
     // Call the new function here:
-    enable_build_config(&app_module);
+    //enable_build_config(&app_module);
 
     // ---- Generate Kotlin files from templates ----
     let template_dir =

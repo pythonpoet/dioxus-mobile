@@ -1,63 +1,70 @@
-// The dioxus prelude contains a ton of common items used in dioxus apps. It's a good idea to import wherever you
-// need dioxus
 use dioxus::prelude::*;
 
 use components::Hero;
 
-/// Define a components module that contains all shared components for our app.
 mod components;
 
-// We can import assets in dioxus with the `asset!` macro. This macro takes a path to an asset relative to the crate root.
-// The macro returns an `Asset` type that will display as the path to the asset in the browser or a local path in desktop bundles.
 const FAVICON: Asset = asset!("/assets/favicon.ico");
-// The asset macro also minifies some assets like CSS and JS to make bundled smaller
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 fn main() {
-    // The `launch` function is the main entry point for a dioxus app. It takes a component and renders it with the platform feature
-    // you have enabled
     dioxus::launch(App);
 }
 
-/// App is the main component of our app. Components are the building blocks of dioxus apps. Each component is a function
-/// that takes some props and returns an Element. In this case, App takes no props because it is the root of our app.
-///
-/// Components should be annotated with `#[component]` to support props, better error messages, and autocomplete
 #[component]
 fn App() -> Element {
-    // The `rsx!` macro lets us define HTML inside of rust. It expands to an Element with all of our HTML inside.
-    use dioxus::prelude::*;
+    use dioxus_fcm::{
+        kotlin_available, request_notification_permission, request_token,
+    };
 
-    use dioxus_fcm::{events, kotlin_available, request_token, TokenEvent};
-    use tracing;
-    // use_effect(move || {
-    //     tracing::debug!("reading token ..");
-    //     // 1. Request token on startup (after consent!)
-    //     kotlin_available();
-    // });
+    // Results live in signals so the UI re-renders when they arrive
+    let mut kotlin_says = use_signal(|| None::<String>);
+    let mut permission = use_signal(|| None::<bool>);
+    let mut token = use_signal(|| None::<String>);
+
     rsx! {
-        // In addition to element and text (which we will see later), rsx can contain other components. In this case,
-        // we are using the `document::Link` component to add a link to our favicon and main CSS file into the head of our app.
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
 
         h1 { "Hallo!" }
-        h2 {" this is a test"}
-        h3 { "wonderful! very much" }
-        div { class: "bg-red-100",
-                button {
-                    onclick: move |_| kotlin_available(),
-                    "Test kotlin!"
-                }
-            }
-            div { class: "bg-blue-100",
-                    button {
-                        onclick: move |_| request_token(),
-                        "Read token!"
-                    }
-                }
 
+        // 1. Sync probe — call directly, store the return value
+        div { class: "bg-red-100",
+            button {
+                onclick: move |_| kotlin_says.set(kotlin_available()),
+                "Test kotlin!"
+            }
+            if let Some(s) = kotlin_says() {
+                p { "Kotlin says: {s}" }
+            }
+        }
+
+        // 2. Async permission — handler must be async so we can .await
+        div { class: "bg-blue-100",
+            button {
+                onclick: move |_| async move {
+                    permission.set(Some(request_notification_permission().await));
+                },
+                "Request permission"
+            }
+            if let Some(granted) = permission() {
+                p { if granted { "🔔 granted" } else { "🚫 denied" } }
+            }
+        }
+
+        // 3. Async token — same pattern
+        div { class: "bg-blue-100",
+            button {
+                onclick: move |_| async move {
+                    token.set(request_token().await);
+                },
+                "Read token!"
+            }
+            if let Some(t) = token() {
+                p { class: "break-all", "token: {t}" }
+            }
+        }
     }
 }
