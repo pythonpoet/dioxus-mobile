@@ -3,6 +3,7 @@
 [android.permissions]
 "android.permission.INTERNET" = { description = "Network access for push notifications" }
 "android.permission.POST_NOTIFICATIONS" = { description = "Show push notifications" }
+"android.permission.RECORD_AUDIO" = { description = "Record audio for pronounciation checker"}
 
 [android]
 custom_manifest = "android/AndroidManifest.xml"

@@ -8,9 +8,8 @@ edition = "2021"
 
 [dependencies]
 dioxus = { workspace = true, features = [] }
-dioxus-fcm = { workspace = true}
-dioxus-recoder = {workspace = true}
-# fcm-messaging-core
+#dioxus-fcm = { workspace = true }
+dioxus-recorder = { workspace = true }
 async-trait = "0.1"
 futures-core = "0.3"
 thiserror = "2"
