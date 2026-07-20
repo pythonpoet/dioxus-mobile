@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 dioxus = { workspace = true, features = [] }
 dioxus-fcm = { workspace = true}
+dioxus-recoder = {workspace = true}
 # fcm-messaging-core
 async-trait = "0.1"
 futures-core = "0.3"
@@ -17,9 +18,16 @@ thiserror = "2"
 # platform crates additionally:
 tokio = { version = "1", features = ["sync"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
-futures-util = "0.3"
+# futures-util = "0.3"
 once_cell = "1"
 tracing = { version = "0.1.44", features = ["log"], optional = true}
+
+
+cpal = "0.15"
+hound = "3.5"
+futures-util = "0.3"
+nnnoiseless = "0.5"
+ringbuf = { version = "0.4", features = ["alloc"] }
 
 [features]
 default = ["mobile", "tracing"]

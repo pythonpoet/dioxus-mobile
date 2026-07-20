@@ -13,7 +13,7 @@ enum AudioCommand {
     Stop,
 }
 
-pub fn App() -> Element {
+pub fn CleanAudioRecorder() -> Element {
     let mut is_recording = use_signal(|| false);
 
     let audio_task = use_coroutine(move |mut rx: UnboundedReceiver<AudioCommand>| async move {
@@ -100,20 +100,9 @@ pub fn App() -> Element {
         }
     });
 
-    let mut state = use_signal(|| "not requested".to_string());
-
     rsx! {
         div { padding: "20px", font_family: "sans-serif",
             h2 { "Denoised 48kHz Audio Recorder" }
-            button {
-                        onclick: move |_| async move {
-                            state.set("requesting…".into());
-                            let granted = mic_permission::ensure().await;
-                            state.set(if granted { "granted".into() } else { "denied".into() });
-                        },
-                        "Enable microphone"
-                    }
-                    p { "Microphone: {state}" }
             button {
                 padding: "10px 20px",
                 onclick: move |_| {
