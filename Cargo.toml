@@ -3,11 +3,12 @@ members = [
     "crates/dioxus-camera",
     "crates/dioxus-fcm",
     "crates/dioxus-recorder",
+    "crates/dioxus-jwt",
     "test-app",
 ]
 resolver = "2"
 
 [workspace.dependencies]
 dioxus-fcm = {path = "crates/dioxus-fcm", version = "0.1.0"}
-dioxus-recorder = { path = "crates/dioxus-recoder", version = "0.1.0"}
-dioxus = "0.8.0-alpha.0"
+dioxus-recorder = { path = "crates/dioxus-recorder", version = "0.1.0"}
+dioxus = {path="/home/david/Documents/dioxus"}
