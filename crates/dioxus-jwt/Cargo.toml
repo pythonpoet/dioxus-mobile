@@ -5,13 +5,15 @@ edition = "2021"
 
 [features]
 default = ["client"]
-client = ["dep:dioxus", "dep:dioxus-sdk-storage", "dep:web-time"]
+client = ["dep:dioxus", "dep:dioxus-sdk-storage", "dep:web-time", "dep:tracing"]
 server = ["dep:axum", "dep:http", "dep:tower-layer", "dep:tower-service"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 jsonwebtoken = "10.4.0"
 thiserror = "2"
+tracing = { version = "0.1.44", optional = true }
+
 
 dioxus = { workspace = true, optional = true }
 # SDK releases track the dioxus line — use the build published against 0.8
