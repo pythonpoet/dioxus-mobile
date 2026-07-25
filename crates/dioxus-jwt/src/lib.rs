@@ -6,6 +6,10 @@ mod client;
 #[cfg(feature = "client")]
 pub use client::{provide_jwt, provide_jwt_with, use_jwt, JwtAuth, RequireAuth};
 
+#[cfg(feature = "client")]
+// Re-export the native storage initialization macro so applications using
+// dioxus-jwt do not need a separate dioxus-sdk-storage dependency.
+pub use dioxus_sdk_storage::set_dir;
 #[cfg(feature = "server")]
 mod server;
 #[cfg(feature = "server")]
