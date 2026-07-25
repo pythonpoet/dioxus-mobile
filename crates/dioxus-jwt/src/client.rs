@@ -13,8 +13,12 @@ use std::fmt;
 
 use dioxus::prelude::*;
 use dioxus_sdk_storage::use_persistent;
+
 use serde::de::DeserializeOwned;
 
+// Re-export the native storage initialization macro so applications using
+// dioxus-jwt do not need a separate dioxus-sdk-storage dependency.
+pub use dioxus_sdk_storage::set_dir;
 /// Default key under which the token is persisted.
 pub const DEFAULT_STORAGE_KEY: &str = "dioxus-jwt:token";
 
