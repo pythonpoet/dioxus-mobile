@@ -221,36 +221,18 @@ pub fn provide_jwt() -> JwtAuth {
 
 /// Create persistent JWT state using a custom storage key.
 pub fn provide_jwt_with(storage_key: &str) -> JwtAuth {
-    let environment = JwtEnvironment::current();
+    let key_for_log = storage_key.to_owned();
 
-    diagnostic(format!(
-        "provide_jwt_with: entering; key={storage_key:?}; {environment}"
-    ));
+    use_hook(move || {
+        eprintln!(
+            "[dioxus-jwt] Initializing persistent JWT storage; key={key_for_log:?}"
+        );
+    });
 
-    if let Err(error) = validate_storage_key(storage_key) {
-        diagnostic_error(format!(
-            "provide_jwt_with: storage key validation failed: {error}"
-        ));
-
-        panic!("{error}");
-    }
-
-    diagnostic(format!(
-        "provide_jwt_with: calling dioxus_sdk_storage::use_persistent; \
-         key={storage_key:?}"
-    ));
-
-    /*
-     * If the last emitted checkpoint is the message immediately above,
-     * the panic occurred inside `use_persistent` or its native storage
-     * backend.
-     */
-    let stored = use_persistent(storage_key, || Option::<String>::None);
-
-    diagnostic(format!(
-        "provide_jwt_with: use_persistent returned successfully; \
-         key={storage_key:?}"
-    ));
+    let stored = use_persistent(
+        storage_key,
+        || Option::<String>::None,
+    );
 
     let auth = JwtAuth {
         stored,
@@ -262,27 +244,9 @@ pub fn provide_jwt_with(storage_key: &str) -> JwtAuth {
         JwtStorageKind::Persistent,
     );
 
-    diagnostic(
-        "provide_jwt_with: providing JwtDiagnostics context",
-    );
-
     use_context_provider(|| diagnostics);
-
-    diagnostic(
-        "provide_jwt_with: providing JwtAuth context",
-    );
-
-    let provided = use_context_provider(|| auth);
-
-    diagnostic(format!(
-        "provide_jwt_with: initialization completed; \
-         storage_kind={}",
-        provided.storage_kind()
-    ));
-
-    provided
+    use_context_provider(|| auth)
 }
-
 /// Create a non-persistent JWT context.
 ///
 /// Use this temporarily to determine whether a panic comes from
