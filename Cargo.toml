@@ -12,5 +12,5 @@ resolver = "2"
 [workspace.dependencies]
 dioxus-fcm = {path = "crates/dioxus-fcm", version = "0.1.0"}
 dioxus-recorder = { path = "crates/dioxus-recorder", version = "0.1.0"}
-dioxus-jwt-store = { path = "crates/dioxus-jwt-store", version = "0.1.0"}
+#dioxus-jwt-store = { path = "crates/dioxus-jwt-store", version = "0.1.0"}
 dioxus = {git = "https://github.com/pythonpoet/dioxus", branch= "main"}
