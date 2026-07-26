@@ -101,7 +101,6 @@ where
 /// Rejects with 401 on missing/invalid/expired tokens.
 pub struct AuthClaims<C>(pub C);
 
-#[axum::async_trait]
 impl<S, C> FromRequestParts<S> for AuthClaims<C>
 where
     S: Send + Sync,
