@@ -4,7 +4,7 @@ pub use error::AuthError;
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]
-pub use client::{provide_jwt, provide_jwt_with, use_jwt, JwtAuth, RequireAuth};
+pub use client::{provide_jwt,try_use_jwt_diagnostics, try_use_jwt, provide_jwt_with, use_jwt, JwtAuth, RequireAuth};
 
 #[cfg(feature = "client")]
 // Re-export the native storage initialization macro so applications using
