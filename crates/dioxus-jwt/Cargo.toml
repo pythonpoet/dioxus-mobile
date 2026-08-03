@@ -6,21 +6,18 @@ edition = "2021"
 [features]
 default = ["client"]
 client = ["dep:dioxus", "dep:dioxus-sdk-storage", "dep:web-time", "dep:tracing"]
-server = ["dep:axum", "dep:http", "dep:tower-layer", "dep:tower-service"]
+# The `server` feature offloads all validation/authentication logic to
+# `axum-jwt-auth`. dioxus-jwt simply re-exports its API.
+server = ["dep:axum-jwt-auth"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 jsonwebtoken = "10.4.0"
-thiserror = "2"
 tracing = { version = "0.1.44", optional = true }
 
+axum-jwt-auth = { version = "0.7", optional = true }
 
 dioxus = { workspace = true, optional = true }
 # SDK releases track the dioxus line — use the build published against 0.8
 dioxus-sdk-storage = { git = "https://github.com/pythonpoet/sdk", branch = "main", optional = true }
 web-time = { version = "1", optional = true }
-
-axum = { version = "0.8", optional = true, default-features = false }
-http = { version = "1", optional = true }
-tower-layer = { version = "0.3", optional = true }
-tower-service = { version = "0.3", optional = true }

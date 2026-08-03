@@ -16,6 +16,15 @@ use dioxus_sdk_storage::use_persistent;
 
 use serde::de::DeserializeOwned;
 
+/// Decode claims *without* verifying the signature. The client uses this to
+/// read `sub`/`exp` for UX. Verification always happens server-side — a
+/// client can never be its own trust anchor.
+fn decode_claims_unverified<C: DeserializeOwned>(
+    token: &str,
+) -> Result<C, jsonwebtoken::errors::Error> {
+    Ok(jsonwebtoken::dangerous::insecure_decode::<C>(token)?.claims)
+}
+
 
 /// Default key under which the token is persisted.
 pub const DEFAULT_STORAGE_KEY: &str = "dioxus-jwt:token";
@@ -427,7 +436,7 @@ impl JwtAuth {
     pub fn try_claims<C: DeserializeOwned>(&self) -> Result<C, JwtError> {
         let token = self.token().ok_or(JwtError::MissingToken)?;
 
-        crate::decode_claims_unverified::<C>(&token).map_err(|error| {
+        decode_claims_unverified::<C>(&token).map_err(|error| {
             JwtError::InvalidToken(error.to_string())
         })
     }
@@ -476,14 +485,14 @@ struct ExpProbe {
 }
 
 fn decode_expiration(token: &str) -> Option<u64> {
-    crate::decode_claims_unverified::<ExpProbe>(token)
+    decode_claims_unverified::<ExpProbe>(token)
         .ok()
         .and_then(|probe| probe.exp)
 }
 
 fn is_expired(token: &str) -> bool {
     let Ok(probe) =
-        crate::decode_claims_unverified::<ExpProbe>(token)
+        decode_claims_unverified::<ExpProbe>(token)
     else {
         diagnostic(
             "is_expired: token could not be decoded; \
