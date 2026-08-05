@@ -36,6 +36,35 @@ pub fn use_auth_headers(auth: JwtAuth) {
     });
 }
 
+/// One-shot storage-directory initialization.
+///
+/// `set_dir` helps a `OnceLock` that panics if called twice (a remounting root
+/// component would trip it). Guard with a process-actor `Once`.
+fn set_dir_once() {
+    use std::sync::Once;
+    static ONCE: Once = Once::new();
+    // `set_dir!` expands to an expression-level `#[cfg]` attribute, which Rust
+    // accepts on statements but not bare tail expressions — so keep the trailing
+    // semicolon.
+    ONCE.call_once(|| {
+        crate::set_dir!();
+    });
+}
+
+/// Initialize the JWT subsystem in one call.
+///
+/// - config on persistent storage directory, exactly once (see [`set_dir_once`]);
+/// - provides the [`JwtAuth`] context for `use_jwt`, `RequireAuth`, …;
+/// - mirrors the current token into request `Authorization` headers.
+///
+/// Call this from the root component. Requires the `client` feature.
+pub fn init() -> JwtAuth {
+    set_dir_once();
+    let auth = provide_jwt();
+    use_auth_headers(auth);
+    auth
+}
+
 /// Decode claims *without* verifying the signature. The client uses this to
 /// read `sub`/`exp` for UX. Verification always happens server-side — a
 /// client can never be its own trust anchor.
