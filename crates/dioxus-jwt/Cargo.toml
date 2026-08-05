@@ -23,3 +23,9 @@ dioxus = { workspace = true, optional = true }
 # SDK releases track the dioxus line — use the build published against 0.8
 dioxus-sdk-storage = { git = "https://github.com/pythonpoet/sdk", branch = "main", optional = true }
 web-time = { version = "1", optional = true }
+
+# jsonwebtoken → p256 → getrandom 0.2: on wasm32-unknown-unknown `getrandom`
+# needs the `js` feature or it fails to compile. Enable it so the crate can
+# build for the web (wasm-bindgen) target. Harmless everywhere else.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
