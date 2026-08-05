@@ -52,6 +52,22 @@ The `client` feature enables `dioxus/fullstack` because `use_auth_headers`
 uses `dioxus_fullstack::set_request_headers`. If your application already
 enables it, this is a no-op.
 
+## Platform support
+
+- **Web (wasm32)** — the `client` feature works on the web: the token
+  persists to `localStorage` (via `dioxus-sdk-storage`'s wasm backend),
+  `use_auth_headers` sets the `Authorization` header on server-function
+  calls, and `set_dir!` is a no-op. The crate enables `getrandom/js` on
+  wasm so jsonWebToken-based claim decoding compiles for
+  `wasm32-unknown-unknown`.
+- **Native / mobile (Android, desktop)** — the `client` feature persists via
+  the file system under the NDK/data dir, which `set_dir!()` configures on
+  first render.
+- **The `server` feature is host-only.** It pulls in `axum`/`tokio` (the
+  tower/IO stack), which does not compile for wasm. Do not enable `server`
+  in a web build — use `features = ["client"]` there, and toggle `server`
+  only for the native/back-end build.
+
 ## Client quickstart
 
 ```rust
