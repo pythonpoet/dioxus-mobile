@@ -4,59 +4,59 @@ Storage-backed JWT auth for [Dioxus](https://dioxuslabs.com).
 
 - **Client:** the token is persisted via
   [dioxus-sdk-storage](https://docs.rs/dioxus-sdk-storage) behind a signal,
-  exposed through a `Copy` context handle with login/logout/guard helpers.
-- **Server:** a thin re-export of
-  [axum-jwt-auth](https://docs.rs/axum-jwt-auth). All key management, token
-  validation, and `axum` extraction / error mapping live in that crate; this
-  crate just re-exports its public surface so you can depend on a single
-  `dioxus-jwt` for both the client and the server.
+  exposed through a `Copy` context handle with login/logout/guard helpers, and
+  mirrored into `Authorization: Bearer` request headers so Dioxus server
+  functions authenticate transparently.
+- **Server:** delegating to
+  [axum-jwt-auth](https://docs.rs/axum-jwt-auth) for all
+  validation/extraction, plus two thin generic helpers (`issue_hs256`,
+  `hs256_decoder`) so applications never need to import `jsonwebtoken` or
+  `axum-jwt-auth` directly.
 
-## How it maps
+A single `init()` call bootstraps everything on the client.
 
-| axum-jwt-auth | dioxus-jwt |
+## What dioxus-jwt provides
+
+### Client
+
+| Function | Purpose |
 |---|---|
-| `LocalDecoder` (keys + validation) | re-exported as `LocalDecoder` |
-| `Decoder<T>` (Arc trait-object, `FromRef`) | re-exported as `Decoder` |
-| `Claims<T, E>` extractor (validates a bearer token) | re-exported as `Claims` |
-| `BearerTokenExtractor` / header / cookie extractors | re-exported |
-| `AuthError` (→ HTTP 401/500) | re-exported as `AuthError` |
-| `RemoteJwksDecoder` (JWKS + auto-refresh) | re-exported |
+| `init()` | **One-shot bootstrap**: configure the storage directory (once), provide the `JwtAuth` context, and mirror the current token into request headers. Call from your root component. |
+| `provide_jwt()` / `provide_jwt_with(key)` | Provide a persistent `JwtAuth` context (default storage key `dioxus-jwt:token`). |
+| `use_jwt()` | Read/write the current `JwtAuth` context. |
+| `use_auth_headers(&JwtAuth)` | `use_effect` that mirrors the token into `Authorization: Bearer` for every subsequent server-function call. Called internally by `init()`. |
+| `RequireAuth` | Render a component only when authenticated, else a fallback. |
+| `JwtAuth` | `Copy` handle: `token()`, `bearer()`, `login()`, `logout()`, `is_authenticated()`, `claims::<C>()`. |
 
-The `server` feature is a pure `pub use axum_jwt_auth::…` — no wrapper types,
-no tower layer. Use the extractor `Claims<T>` and the `Decoder<T>: FromRef`
-pattern exactly as you would with `axum-jwt-auth` directly.
+### Server
+
+| Function | Purpose |
+|---|---|
+| `issue_hs256<C: Serialize>(secret, &claims)` | Sign an HS256 JWT from generic claims. |
+| `hs256_decoder<C>(secret, audience)` | Build an `Arc<Decoder<C>>` (HS256) ready for router state / the `Claims` extractor. |
+| `Decoder`, `LocalDecoder`, `Claims`, `AuthError`, extractors | Re-exported verbatim from `axum-jwt-auth`. |
 
 ## Install
 
 ```toml
 [dependencies]
-dioxus-jwt = { version = "0.1" }                 # client only (default)
-# dioxus-jwt = { version = "0.1", features = ["server"] }   # re-exports axum-jwt-auth
+dioxus-jwt = { git = "https://github.com/pythonpoet/dioxus-mobile", features = ["client", "server"] }
 ```
 
 | Feature | Enables | Pulls in | Default |
 |---|---|---|---|
-| `client` | `JwtAuth`, `provide_jwt`, `use_jwt`, `RequireAuth` | `dioxus`, `dioxus-sdk-storage`, `web-time` | ✔ |
-| `server` | `Decoder`, `LocalDecoder`, `Claims`, `AuthError`, extractors | `axum-jwt-auth` | |
+| `client` | `JwtAuth`, `init`, `provide_jwt`, `use_jwt`, `use_auth_headers`, `RequireAuth` | `dioxus` (+ `fullstack`), `dioxus-sdk-storage`, `web-time`, `tracing` | ✔ |
+| `server` | `issue_hs256`, `hs256_decoder`, `Decoder`, `LocalDecoder`, `Claims`, `AuthError`, extractors | `axum-jwt-auth`, `jsonwebtoken` | |
 
-## Version compatibility
-
-| dioxus-jwt | dioxus | dioxus-jwt-store | axum | axum-jwt-auth | jsonwebtoken |
-|---|---|---|---|---|---|
-| 0.1 | 0.8 | 0.8 | 0.8 | 0.7 | 10 |
-
-> Keep the `axum` version aligned with what `dioxus-fullstack` uses internally
-> (check with `cargo tree -i axum` if you see trait-mismatch errors).
-> `axum-jwt-auth` 0.7 requires `axum` 0.8 and `jsonwebtoken` 10 — the same
-> versions dioxus-jwt targets. On sdk versions before 0.7,
-> `use_persistent` lives at `dioxus_sdk_storage::storage::use_persistent`
-> instead of the crate root.
+The `client` feature enables `dioxus/fullstack` because `use_auth_headers`
+uses `dioxus_fullstack::set_request_headers`. If your application already
+enables it, this is a no-op.
 
 ## Client quickstart
 
 ```rust
 use dioxus::prelude::*;
-use dioxus_jwt::{provide_jwt, use_jwt, RequireAuth};
+use dioxus_jwt::{init, use_jwt, RequireAuth};
 
 #[derive(serde::Deserialize, Clone)]
 struct Claims {
@@ -65,12 +65,15 @@ struct Claims {
 }
 
 fn main() {
+    // Server functions (dioxus-fullstack):
+    // dioxus::serve(|| async move { dioxus::server::router(App).layer(...) });
+    // Client (web / desktop / mobile):
     dioxus::launch(App);
 }
 
 #[component]
 fn App() -> Element {
-    provide_jwt(); // token persists under the key "dioxus-jwt:token"
+    init(); // storage dir + provider + auth headers, all at once
 
     rsx! {
         RequireAuth {
@@ -89,7 +92,7 @@ fn Login() -> Element {
     rsx! {
         form {
             onsubmit: move |_| async move {
-                // `login` here is your server function / API call
+                // `login` here is a server function / API call
                 if let Ok(token) = login(username(), password()).await {
                     auth.login(token); // persisted to storage automatically
                 }
@@ -127,16 +130,16 @@ fn Dashboard() -> Element {
 `JwtAuth` is `Copy` and signal-backed: anything that called `token()` or
 `is_authenticated()` re-renders the moment you `login()`/`logout()`.
 
-## Server quickstart (axum-jwt-auth)
+## Server quickstart
 
-With the `server` feature, `dioxus_jwt` is just `axum_jwt_auth`, so enable
-the extractor with router state.
+`issue_hs256` / `hs256_decoder` keep the signing and validation setup generic:
+pass your own claims type, and the encoder/decoder match on the same HS256
+secret and audience.
 
 ```rust
 use std::sync::Arc;
 use axum::{extract::FromRef, routing::get, Json, Router};
-use dioxus_jwt::{Claims, Decoder, LocalDecoder};
-use jsonwebtoken::{DecodingKey, Algorithm, Validation};
+use dioxus_jwt::{hs256_decoder, issue_hs256, Claims, Decoder};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -157,20 +160,15 @@ async fn me(Claims { claims, .. }: Claims<MyClaims>) -> Json<MyClaims> {
 #[tokio::main]
 async fn main() {
     let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-    let mut validation = Validation::new(Algorithm::HS256);
-    validation.set_audience(&["my-app"]);
 
-    let decoder = LocalDecoder::builder()
-        .keys(vec![jsonwebtoken::DecodingKey::from_secret(secret.as_bytes())])
-        .validation(validation)
-        .build()
-        .unwrap();
+    // Same secret + audience as the encoder, so tokens round-trip.
+    let decoder = hs256_decoder::<MyClaims>(&secret, Some(&["my-app"]));
+    let state = AppState { decoder };
 
-    let state = AppState { decoder: Arc::new(decoder) };
+    let app = Router::new().route("/me", get(me)).with_state(state);
 
-    let app = Router::new()
-        .route("/me", get(me))
-        .with_state(state);
+    // issue:
+    //   let token = issue_hs256(&secret, &MyClaims { sub, exp });
 }
 ```
 
@@ -179,52 +177,38 @@ badly-signed token. Extractors for custom headers or cookies come from
 `define_header_extractor!` / `define_cookie_extractor!` (re-exported), and
 `RemoteJwksDecoder` handles JWKS with automatic caching and refresh.
 
-Issuing tokens (signing fresh claims with your `EncodingKey` after verifying
-credentials) is the caller's job on the server; this crate's client half only
-stores and presents whatever token the server hands back.
-
 ## Dioxus fullstack
 
-Server functions are plain axum-routable endpoints, so the pragmatic pattern
-is: the login function *returns* the token, and protected functions *take*
-it as an argument (the default server-fn client doesn't attach
-`Authorization` headers).
+`init()` makes server functions token-aware automatically: it mirrors the
+current token into `Authorization: Bearer` headers via
+`dioxus_fullstack::set_request_headers`, so protected server functions can
+verify the caller from the header instead of taking the token as a serialized
+argument.
+
+On the server, gate your protected functions with a server-only argument
+(`name: Type` after the route) whose extractor reads the bearer header and
+validates it against your `Decoder`. With the `server` feature you can build
+that extractor from the re-exported `axum-jwt-auth` machinery (or the generic
+`hs256_decoder` helper):
 
 ```rust
-use dioxus_fullstack::prelude::*;
-use jsonwebtoken::{encode, EncodingKey, Header};
-use serde::{Deserialize, Serialize};
+use dioxus::prelude::*;
 
-#[derive(Serialize, Deserialize)]
-pub struct Claims {
-    pub sub: String,
-    pub exp: usize,
+// A server-only argument: present in the handler but absent from the client
+// stub. Custom extractors implement `FromRequestParts<FullstackContext>` and
+// read the `Authorization: Bearer` header that `init()` set.
+#[cfg(feature = "server")]
+use axum::{http::request::Parts, extract::FromRequestParts};
+#[cfg(feature = "server")]
+use dioxus::prelude::dioxus_fullstack::FullstackContext;
+
+// … define `Auth` / `from_request_parts` that decode the bearer token …
+
+#[post("/api/me", auth: my_extractor::Auth)]
+pub async fn me() -> Result<String, ServerFnError> {
+    // `auth.claims` is in scope (server-only argument)
+    // …
 }
-
-fn encoding_key() -> EncodingKey {
-    EncodingKey::from_secret(std::env::var("JWT_SECRET").unwrap().as_bytes())
-}
-
-#[post("/api/login")]
-pub async fn login(username: String, password: String) -> Result<String, ServerFnError> {
-    // verify credentials against your DB …
-    let exp = /* now + 3600 */;
-    Ok(encode(&Header::default(), &Claims { sub: username, exp }, &encoding_key())
-        .map_err(|e| ServerFnError::new(e.to_string()))?)
-}
-
-#[post("/api/me")]
-pub async fn me(token: String) -> Result<String, ServerFnError> {
-    // verify `token` with a `LocalDecoder` (or mount the `Claims` extractor)
-    // then respond …
-}
-```
-
-```rust
-// client side
-let mut auth = use_jwt();
-auth.login(login(user, pass).await?);                       // persist
-let greeting = me(auth.token().unwrap()).await?;            // use
 ```
 
 Because `#[post("/api/...")]` maps to real paths, you can mount
