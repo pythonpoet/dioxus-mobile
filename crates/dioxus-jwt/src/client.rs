@@ -16,6 +16,26 @@ use dioxus_sdk_storage::use_persistent;
 
 use serde::de::DeserializeOwned;
 
+/// Subscribe to the current token and mirror it into the global `Authorization`
+/// request header. Call once, inside a component that has access to `auth`.
+///
+/// On login/logout the signal updates, the effect re-runs, and the header is
+/// re-set (or cleared) for subsequent server-function calls.
+pub fn use_auth_headers(auth: JwtAuth) {
+    use_effect(move || {
+        #[cfg(not(feature = "server"))]
+        {
+            let mut headers = dioxus::prelude::dioxus_fullstack::HeaderMap::new();
+            if let Some(token) = auth.token() {
+                if let Ok(value) = format!("Bearer {token}").parse() {
+                    headers.insert("authorization", value);
+                }
+            }
+            dioxus::prelude::dioxus_fullstack::set_request_headers(headers);
+        }
+    });
+}
+
 /// Decode claims *without* verifying the signature. The client uses this to
 /// read `sub`/`exp` for UX. Verification always happens server-side — a
 /// client can never be its own trust anchor.

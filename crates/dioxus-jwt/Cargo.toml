@@ -5,7 +5,9 @@ edition = "2021"
 
 [features]
 default = ["client"]
-client = ["dep:dioxus", "dep:dioxus-sdk-storage", "dep:web-time", "dep:tracing"]
+# `client` needs dioxus's `fullstack` so `dioxus::prelude::dioxus_fullstack`
+# (which provides `set_request_headers`/`HeaderMap`) resolves for `use_auth_headers`.
+client = ["dep:dioxus", "dep:dioxus-sdk-storage", "dep:web-time", "dep:tracing", "dioxus?/fullstack"]
 # The `server` feature offloads all validation/authentication logic to
 # `axum-jwt-auth`. dioxus-jwt simply re-exports its API.
 server = ["dep:axum-jwt-auth"]
