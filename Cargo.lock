@@ -1788,6 +1788,7 @@ dependencies = [
  "axum-jwt-auth",
  "dioxus",
  "dioxus-sdk-storage",
+ "getrandom 0.2.17",
  "jsonwebtoken",
  "serde",
  "tracing",

@@ -1,5 +1,11 @@
 # dioxus-jwt
 
+TODO
+- Blacklist token on user logout handler.
+    dev needs to implement a blacklist handler so tokens can get auto-invalidated
+- Auto logout on invalid token. When the server restarts the token is not valid anymore. but the app stays authenticate. 
+  Either token should be percisstent during server session and/or auto invalidate.
+
 Storage-backed JWT auth for [Dioxus](https://dioxuslabs.com).
 
 - **Client:** the token is persisted via
