@@ -253,5 +253,4 @@ endpoints with a bearer header.
 
 ## License
 
-Licensed under either of [Apache-2.0](LICENSE-APACHE) or
-[MIT](LICENSE-MIT) at your option.
+Licensed under HL-3 licence (see project root)
