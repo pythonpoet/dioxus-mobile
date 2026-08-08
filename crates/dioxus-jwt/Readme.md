@@ -1,5 +1,7 @@
 # dioxus-jwt
 
+Disclamer: Project is in an experimental stage, don't use it for production code!
+
 Storage-backed JWT auth for [Dioxus](https://dioxuslabs.com).
 
 - **Client:** the token is persisted via
