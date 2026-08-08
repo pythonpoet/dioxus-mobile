@@ -16,6 +16,27 @@ use dioxus_sdk_storage::use_persistent;
 
 use serde::de::DeserializeOwned;
 
+/// Set (or clear) the global `Authorization: Bearer` request header
+/// synchronously from an optional token.
+///
+/// This is safe to call outside render, e.g. immediately after a login/register
+/// handler receives its token, so a subsequent server-function call in the same
+/// tick always carries it. The header is cleared when `token` is `None`.
+pub fn set_bearer_header(token: Option<String>) {
+    #[cfg(not(feature = "server"))]
+    {
+        use dioxus::prelude::dioxus_fullstack::{HeaderMap, set_request_headers};
+
+        let mut headers = HeaderMap::new();
+        if let Some(token) = token {
+            if let Ok(value) = format!("Bearer {token}").parse() {
+                headers.insert("authorization", value);
+            }
+        }
+        set_request_headers(headers);
+    }
+}
+
 /// Subscribe to the current token and mirror it into the global `Authorization`
 /// request header. Call once, inside a component that has access to `auth`.
 ///
@@ -23,16 +44,7 @@ use serde::de::DeserializeOwned;
 /// re-set (or cleared) for subsequent server-function calls.
 pub fn use_auth_headers(auth: JwtAuth) {
     use_effect(move || {
-        #[cfg(not(feature = "server"))]
-        {
-            let mut headers = dioxus::prelude::dioxus_fullstack::HeaderMap::new();
-            if let Some(token) = auth.token() {
-                if let Ok(value) = format!("Bearer {token}").parse() {
-                    headers.insert("authorization", value);
-                }
-            }
-            dioxus::prelude::dioxus_fullstack::set_request_headers(headers);
-        }
+        set_bearer_header(auth.token());
     });
 }
 
