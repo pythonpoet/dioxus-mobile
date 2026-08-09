@@ -1,5 +1,4 @@
-//package {{package}}
-package dev.dioxus.main
+package {{package}}
 
 import android.util.Log
 import android.content.Context
@@ -75,14 +74,14 @@ class FcmService : FirebaseMessagingService() {
         fun notificationsEnabled(context: Context): Boolean =
             NotificationManagerCompat.from(context).areNotificationsEnabled()
 
-            @JvmStatic
-            fun handlePermissionResult(requestCode: Int, grantResults: IntArray): Boolean {
-                if (requestCode != REQUEST_CODE) return false
-                val granted = grantResults.isNotEmpty() &&
-                        grantResults[0] == PackageManager.PERMISSION_GRANTED
-                nativeOnPermissionResult(granted)
-                return true
-            }
+        @JvmStatic
+        fun handlePermissionResult(requestCode: Int, grantResults: IntArray): Boolean {
+            if (requestCode != REQUEST_CODE) return false
+            val granted = grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+            nativeOnPermissionResult(granted)
+            return true
+        }
 
         @JvmStatic
         external fun nativeOnToken(token: String)
