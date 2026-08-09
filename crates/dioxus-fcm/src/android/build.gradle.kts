@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.dioxus.main.fcm"
+    namespace = "org.taalbubbl.dev"
     compileSdk = 34
     defaultConfig { minSdk = 24 }
 }

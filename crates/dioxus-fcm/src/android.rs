@@ -1,7 +1,7 @@
 use jni::JNIEnv;
-use jni::objects::{JClass, JObject, JString, JThrowable, JValue};
+use jni::objects::{GlobalRef, JClass, JObject, JString, JThrowable, JValue};
+use parking_lot::Mutex;
 
-use std::sync::Mutex;
 use std::time::Duration;
 use tokio::sync::oneshot;
 
@@ -9,20 +9,154 @@ use tokio::sync::oneshot;
 static PENDING_TOKEN: Mutex<Option<oneshot::Sender<String>>> = Mutex::new(None);
 static PENDING_PERMISSION: Mutex<Option<oneshot::Sender<bool>>> = Mutex::new(None);
 
-/// Package baked in at build time from WRY_ANDROID_PACKAGE.
-/// Falls back for non-dx builds / IDE analysis.
-const ANDROID_PACKAGE: &str = match option_env!("WRY_ANDROID_PACKAGE") {
+/// Package baked into the crate by dioxus-fcm's build.rs, derived from the
+/// app's Dioxus.toml `[bundle] identifier` (via the generated `build.gradle.kts`
+/// `namespace`/`applicationId`). This is the authoritative class package that
+/// matches the generated `FcmService.kt`.
+///
+/// Do NOT rely on `option_env!("WRY_ANDROID_PACKAGE")`: dx hardcodes that to
+/// `dev.dioxus.main` for wry's internal package, which almost never matches the
+/// app's real identifier.
+const ANDROID_PACKAGE: &str = match option_env!("FCM_ANDROID_PACKAGE") {
     Some(p) => p,
+    // Compiled outside dx's Android pipeline (e.g. standalone `cargo check --target`
+    // for IDE analysis): build.rs never resolved the identifier, so we have no
+    // authoritative package. Use dx's wry default; a real build always overrides.
     None => "dev.dioxus.main",
 };
 
+/// Cache the FcmService `java.lang.Class` (as a GlobalRef) once it has been
+/// resolved through the app ClassLoader. Subsequent JNI calls use the cached
+/// class handle directly, which sidesteps `FindClass` — the call that fails on
+/// non-main / attached threads with a spurious `ClassNotFoundException`.
+static FCM_CLASS: Mutex<Option<GlobalRef>> = Mutex::new(None);
+
 fn fcm_class_path() -> String {
-    // "dev.dioxus.main" -> "dev/dioxus/main/FcmService"
+    // "org.taalbubbl.dev" -> "org/taalbubbl/dev/FcmService"
     format!("{}/FcmService", ANDROID_PACKAGE.replace('.', "/"))
 }
-/// Called FROM Kotlin when a token is obtained or refreshed.
-#[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_dioxus_main_FcmService_nativeOnToken(
+
+fn fcm_class_name() -> String {
+    // Dotted class name for ClassLoader.loadClass — "org.taalbubbl.dev.FcmService"
+    format!("{}.FcmService", ANDROID_PACKAGE)
+}
+
+/// Resolve and cache the FcmService class handle via the app's ClassLoader.
+/// On Android, `FindClass` on an attached thread only sees system classes, so
+/// we load through `context.getClassLoader().loadClass(...)` and keep a global
+/// ref. Returns the cached class handle on success.
+fn fcm_jclass(env: &mut JNIEnv) -> Option<GlobalRef> {
+    // Fast path: already resolved.
+    if let Some(cached) = FCM_CLASS.lock().clone() {
+        return Some(cached);
+    }
+
+    let ctx = ndk_context::android_context();
+    let context = unsafe { JObject::from_raw(ctx.context().cast()) };
+
+    // context.getClassLoader()
+    let class_loader = match env.call_method(&context, "getClassLoader", "()Ljava/lang/ClassLoader;", &[]) {
+        Ok(v) => match v.l() {
+            Ok(o) => o,
+            Err(e) => {
+                tracing::error!("getClassLoader returned non-object: {e:?}");
+                return None;
+            }
+        },
+        Err(e) => {
+            let detail = describe_pending_exception(env);
+            tracing::error!("getClassLoader failed: {e:?} | java: {detail}");
+            return None;
+        }
+    };
+
+    // classLoader.loadClass("org.taalbubbl.dev.FcmService")  (dots, not slashes)
+    let Ok(class_name) = env.new_string(fcm_class_name()) else {
+        tracing::error!("new_string failed for FcmService class name");
+        return None;
+    };
+
+    let clazz_obj = match env.call_method(
+        &class_loader,
+        "loadClass",
+        "(Ljava/lang/String;)Ljava/lang/Class;",
+        &[JValue::Object(&class_name)],
+    ) {
+        Ok(v) => match v.l() {
+            Ok(o) => o,
+            Err(e) => {
+                tracing::error!("loadClass returned non-object: {e:?}");
+                return None;
+            }
+        },
+        Err(e) => {
+            let detail = describe_pending_exception(env);
+            tracing::error!("loadClass failed for {}: {e:?} | java: {detail}", fcm_class_name());
+            return None;
+        }
+    };
+
+    match env.new_global_ref(&clazz_obj) {
+        Ok(global) => {
+            // Once registered, nativeOnToken / nativeOnError / nativeOnPermissionResult
+            // are bound to these Rust fns. Do this before anything can fire them.
+            let class = unsafe { JClass::from_raw(clazz_obj.into_raw()) };
+            if let Err(e) = env.register_native_methods(class, &native_callback_methods()) {
+                let detail = describe_pending_exception(env);
+                tracing::warn!("register_native_methods failed: {e:?} | java: {detail}");
+            }
+            *FCM_CLASS.lock() = Some(global.clone());
+            Some(global)
+        }
+        Err(e) => {
+            tracing::error!("new_global_ref for FcmService class failed: {e:?}");
+            None
+        }
+    }
+}
+
+/// The native-callback descriptors, bound to the FcmService class.
+fn native_callback_methods() -> [jni::NativeMethod; 3] {
+    [
+        jni::NativeMethod {
+            name: "nativeOnToken".into(),
+            sig: "(Ljava/lang/String;)V".into(),
+            fn_ptr: fcm_native_on_token as *mut std::ffi::c_void,
+        },
+        jni::NativeMethod {
+            name: "nativeOnError".into(),
+            sig: "(Ljava/lang/String;)V".into(),
+            fn_ptr: fcm_native_on_error as *mut std::ffi::c_void,
+        },
+        jni::NativeMethod {
+            name: "nativeOnPermissionResult".into(),
+            sig: "(Z)V".into(),
+            fn_ptr: fcm_native_on_permission_result as *mut std::ffi::c_void,
+        },
+    ]
+}
+
+/// Resolve a JClass usable as a static-method receiver from the cached global
+/// ref. Falls back to the older FindClass path only if the class was never
+/// resolved through the ClassLoader.
+fn get_fcm_class<'local>(env: &mut JNIEnv<'local>) -> Option<JClass<'local>> {
+    if let Some(g) = fcm_jclass(env) {
+        // &GlobalRef implements Desc<JClass<'static>>; JClass is repr(transparent)
+        // over JObject. Re-wrap the JObject reference as a class handle.
+        let raw = g.as_obj().as_raw();
+        return Some(unsafe { jni::objects::JClass::from_raw(raw) });
+    }
+    // Legacy fallback: FindClass directly by name.
+    env.find_class(fcm_class_path()).ok()
+}
+
+/// Incoming native-callback handlers. Inner implementations (no exported symbol):
+/// the JVM-facing `Java_..._FcmService_nativeOnXxx` symbols are generated per-package
+/// by build.rs (see `generated_native.rs`, included below) so they match the app's
+/// resolved identifier and bind before any Firebase-triggered callback can fire.
+///
+/// JNI signature: `(JNIEnv*, jobject clazz, jstring token) -> void`.
+pub extern "system" fn fcm_native_on_token(
     mut env: JNIEnv,
     _class: JClass,
     token: JString,
@@ -30,35 +164,50 @@ pub extern "system" fn Java_dev_dioxus_main_FcmService_nativeOnToken(
     match env.get_string(&token) {
         Ok(s) => {
             let token: String = s.into();
-            // take() first, drop guard, then send (edition-safe, no lock held during send)
-            let tx = PENDING_TOKEN.lock().unwrap().take();
+            // take() first, drop guard, then send (no lock held during send)
+            let tx = PENDING_TOKEN.lock().take();
             if let Some(tx) = tx {
                 let _ = tx.send(token.clone()); // Err = receiver timed out, fine
             }
-            crate::on_native_token(token); // keep your broadcast for refresh events
+            crate::on_native_token(token); // broadcast for refresh events
         }
         Err(e) => tracing::error!("nativeOnToken get_string failed: {e:?}"),
     }
 }
 
-#[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_dioxus_main_FcmService_nativeOnError(
-    mut env: JNIEnv,
-    _class: JClass,
-    msg: JString,
-) {
+pub extern "system" fn fcm_native_on_error(mut env: JNIEnv, _class: JClass, msg: JString) {
     if let Ok(s) = env.get_string(&msg) {
         let msg: String = s.into();
         // Dropping the sender wakes the awaiter with RecvError → returns None
-        let _ = PENDING_TOKEN.lock().unwrap().take();
+        let _ = PENDING_TOKEN.lock().take();
         crate::on_native_error(msg);
     }
 }
 
+pub extern "system" fn fcm_native_on_permission_result(
+    _env: JNIEnv,
+    _class: JClass,
+    granted: jni::sys::jboolean,
+) {
+    let granted = granted != 0;
+    tracing::info!("🔔 Notification permission granted: {granted}");
+    let tx = PENDING_PERMISSION.lock().take();
+    if let Some(tx) = tx {
+        let _ = tx.send(granted);
+    }
+}
+
+// Generate the JNI-exported `Java_<underscored-package>_FcmService_nativeOnXxx`
+// symbols from build.rs so the JVM can resolve them by name without any prior
+// `RegisterNatives` call (Firebase may invoke onNewToken on a background thread
+// before the crate ever resolves the class).
+#[cfg(target_os = "android")]
+include!(concat!(env!("OUT_DIR"), "/generated_native.rs"));
+
 /// Ask the Kotlin side to fetch the FCM token.
 pub async fn request_token() -> Option<String> {
     let (tx, rx) = oneshot::channel();
-    *PENDING_TOKEN.lock().unwrap() = Some(tx);
+    *PENDING_TOKEN.lock() = Some(tx);
 
     fire_request_token(); // old body, returns ()
 
@@ -66,7 +215,7 @@ pub async fn request_token() -> Option<String> {
         Ok(Ok(token)) => Some(token),
         Ok(Err(_)) => None, // nativeOnError dropped the sender
         Err(_) => {
-            *PENDING_TOKEN.lock().unwrap() = None; // don't leak the slot
+            *PENDING_TOKEN.lock() = None; // don't leak the slot
             tracing::error!("request_token timed out");
             None
         }
@@ -79,15 +228,21 @@ fn fire_request_token() {
     let mut env = vm.attach_current_thread().unwrap();
     let context = unsafe { JObject::from_raw(ctx.context().cast()) };
 
+    let Some(class) = get_fcm_class(&mut env) else {
+        tracing::error!("requestToken failed: could not resolve FcmService class");
+        *PENDING_TOKEN.lock() = None; // fail fast, wake the awaiter
+        return;
+    };
+
     if let Err(e) = env.call_static_method(
-        fcm_class_path(),
+        class,
         "requestToken",
         "(Landroid/content/Context;)V",
         &[(&context).into()],
     ) {
         let detail = describe_pending_exception(&mut env);
         tracing::error!("requestToken failed: {e:?} | java: {detail}");
-        *PENDING_TOKEN.lock().unwrap() = None; // fail fast, wake the awaiter
+        *PENDING_TOKEN.lock() = None; // fail fast, wake the awaiter
     }
 }
 
@@ -99,98 +254,14 @@ pub fn kotlin_available() -> Option<String> {
 
     tracing::debug!("probing kotlin reachability");
 
-    // Try the simple path first: JNI FindClass via call_static_method.
-    if let Some(s) = try_call(&mut env) {
-        return Some(s);
-    }
-
-    // If that failed, try loading the class through the app's ClassLoader.
-    // On Android, the JNI FindClass used on a non-main / attached thread often
-    // only sees system classes, NOT your app's classes — which produces a
-    // spurious ClassNotFoundException even when the class IS in the APK.
-    tracing::warn!("direct call failed, retrying via app ClassLoader");
-    try_call_via_classloader(&mut env)
-}
-
-/// Straight JNI call. Returns None on any failure (after logging the reason).
-fn try_call(env: &mut JNIEnv) -> Option<String> {
-    let result = env.call_static_method(
-        &fcm_class_path(),
-        "kotlinAvailable",
-        "()Ljava/lang/String;",
-        &[],
-    );
-
-    match result {
-        Ok(val) => read_string(env, val),
+    // Resolve through the app ClassLoader (never FindClass on an attached
+    // thread) and invoke the static method on the class handle.
+    let class = get_fcm_class(&mut env)?;
+    match env.call_static_method(class, "kotlinAvailable", "()Ljava/lang/String;", &[]) {
+        Ok(val) => read_string(&mut env, val),
         Err(e) => {
-            let detail = describe_pending_exception(env);
-            tracing::error!("direct kotlinAvailable failed: {e:?} | java: {detail}");
-            None
-        }
-    }
-}
-
-/// Load com.example.TestApp.FcmService via the Android context's ClassLoader,
-/// then invoke the static method reflectively-ish through JNI.
-fn try_call_via_classloader(env: &mut JNIEnv) -> Option<String> {
-    let ctx = ndk_context::android_context();
-    let context = unsafe { JObject::from_raw(ctx.context().cast()) };
-
-    // context.getClassLoader()
-    let class_loader =
-        match env.call_method(&context, "getClassLoader", "()Ljava/lang/ClassLoader;", &[]) {
-            Ok(v) => match v.l() {
-                Ok(o) => o,
-                Err(_) => {
-                    tracing::error!("getClassLoader returned non-object");
-                    return None;
-                }
-            },
-            Err(e) => {
-                let detail = describe_pending_exception(env);
-                tracing::error!("getClassLoader failed: {e:?} | java: {detail}");
-                return None;
-            }
-        };
-
-    // classLoader.loadClass("com.example.TestApp.FcmService")  (note: DOTS, not slashes)
-    let dotted = format!("{}.FcmService", ANDROID_PACKAGE);
-    let class_name = match env.new_string(&dotted) {
-        Ok(s) => s,
-        Err(e) => {
-            tracing::error!("new_string failed: {e:?}");
-            return None;
-        }
-    };
-
-    let clazz_obj = match env.call_method(
-        &class_loader,
-        "loadClass",
-        "(Ljava/lang/String;)Ljava/lang/Class;",
-        &[JValue::Object(&class_name)],
-    ) {
-        Ok(v) => match v.l() {
-            Ok(o) => o,
-            Err(_) => {
-                tracing::error!("loadClass returned non-object");
-                return None;
-            }
-        },
-        Err(e) => {
-            let detail = describe_pending_exception(env);
-            tracing::error!("loadClass failed: {e:?} | java: {detail}");
-            return None;
-        }
-    };
-
-    // Now call the static method on the loaded jclass.
-    let clazz: jni::objects::JClass = clazz_obj.into();
-    match env.call_static_method(clazz, "kotlinAvailable", "()Ljava/lang/String;", &[]) {
-        Ok(val) => read_string(env, val),
-        Err(e) => {
-            let detail = describe_pending_exception(env);
-            tracing::error!("classloader kotlinAvailable failed: {e:?} | java: {detail}");
+            let detail = describe_pending_exception(&mut env);
+            tracing::error!("kotlinAvailable failed: {e:?} | java: {detail}");
             None
         }
     }
@@ -262,8 +333,13 @@ pub fn init_fcm() {
 
     tracing::debug!("calling FcmService.init");
 
+    let Some(class) = get_fcm_class(&mut env) else {
+        tracing::error!("init failed: could not resolve FcmService class");
+        return;
+    };
+
     match env.call_static_method(
-        &fcm_class_path(),
+        class,
         "init",
         "(Landroid/content/Context;)V",
         &[(&context).into()],
@@ -282,10 +358,10 @@ pub async fn request_notification_permission() -> bool {
     }
 
     let (tx, rx) = oneshot::channel();
-    *PENDING_PERMISSION.lock().unwrap() = Some(tx);
+    *PENDING_PERMISSION.lock() = Some(tx);
 
     if !fire_permission_request() {
-        *PENDING_PERMISSION.lock().unwrap() = None;
+        *PENDING_PERMISSION.lock() = None;
         return false;
     }
 
@@ -293,7 +369,7 @@ pub async fn request_notification_permission() -> bool {
     match tokio::time::timeout(Duration::from_secs(120), rx).await {
         Ok(Ok(granted)) => granted,
         _ => {
-            *PENDING_PERMISSION.lock().unwrap() = None;
+            *PENDING_PERMISSION.lock() = None;
             false
         }
     }
@@ -305,8 +381,13 @@ fn fire_permission_request() -> bool {
     let mut env = vm.attach_current_thread().unwrap();
     let activity = unsafe { JObject::from_raw(ctx.context().cast()) };
 
+    let Some(class) = get_fcm_class(&mut env) else {
+        tracing::error!("requestNotificationPermission failed: could not resolve FcmService class");
+        return false;
+    };
+
     match env.call_static_method(
-        fcm_class_path(), // ← was hardcoded "dev/dioxus/main/FcmService"
+        class,
         "requestNotificationPermission",
         "(Landroid/app/Activity;)V",
         &[JValue::Object(&activity)],
@@ -327,8 +408,13 @@ pub fn notifications_enabled() -> bool {
     let mut env = vm.attach_current_thread().unwrap();
     let context = unsafe { JObject::from_raw(ctx.context().cast()) };
 
+    let Some(class) = get_fcm_class(&mut env) else {
+        tracing::error!("notificationsEnabled failed: could not resolve FcmService class");
+        return false;
+    };
+
     env.call_static_method(
-        fcm_class_path(),
+        class,
         "notificationsEnabled",
         "(Landroid/content/Context;)Z",
         &[(&context).into()],
@@ -337,16 +423,3 @@ pub fn notifications_enabled() -> bool {
     .unwrap_or(false)
 }
 
-#[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_dioxus_main_FcmService_nativeOnPermissionResult(
-    _env: JNIEnv,
-    _class: JClass,
-    granted: jni::sys::jboolean,
-) {
-    let granted = granted != 0;
-    tracing::info!("🔔 Notification permission granted: {granted}");
-    let tx = PENDING_PERMISSION.lock().unwrap().take();
-    if let Some(tx) = tx {
-        let _ = tx.send(granted);
-    }
-}

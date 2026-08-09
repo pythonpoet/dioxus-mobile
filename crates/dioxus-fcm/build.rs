@@ -10,13 +10,20 @@ fn main() {
     println!("cargo:rerun-if-env-changed=WRY_ANDROID_PACKAGE");
     println!("cargo:rerun-if-env-changed=WRY_ANDROID_KOTLIN_FILES_OUT_DIR");
 
+    // Generate the JNI-exported symbols for `FCM_ANDROID_PACKAGE` (what dx set for
+    // the last run through `rustc-env`) or fall back to dx's wry default. This must
+    // run even when WRY_ANDROID_KOTLIN_FILES_OUT_DIR is absent (e.g. IDE
+    // `cargo check --target android`), so android.rs's `include!` always resolves.
+    let fallback_package = std::env::var("FCM_ANDROID_PACKAGE")
+        .ok()
+        .or_else(|| std::env::var("WRY_ANDROID_PACKAGE").ok())
+        .unwrap_or_else(|| "dev.dioxus.main".to_string());
+    emit_jni_symbols(&fallback_package);
+
     let Ok(kotlin_out_dir) = std::env::var("WRY_ANDROID_KOTLIN_FILES_OUT_DIR") else {
         // Not building through dx's android pipeline; nothing to generate.
         return;
     };
-
-    let package = std::env::var("WRY_ANDROID_PACKAGE")
-        .expect("WRY_ANDROID_PACKAGE not set — needed to generate FcmService.kt");
 
     let kotlin_out_dir = PathBuf::from(&kotlin_out_dir)
         .canonicalize()
@@ -42,22 +49,87 @@ fn main() {
         }
     };
 
-    // ---- Copy google-services.json into the app module ----
-    let gs_src = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap())
-        .parent()
-        .unwrap() // crates/
-        .parent()
-        .unwrap() // workspace root
-        .join("test-app/android/google-services.json"); // adjust to your actual path
+    // ---- Resolve the Android application identifier (package name) ----
+    // dx hardcodes `WRY_ANDROID_PACKAGE = dev.dioxus.main` (wry's internal
+    // package), which does NOT match the app's real identifier from
+    // Dioxus.toml `[bundle] identifier`. The generated app `build.gradle.kts`
+    // carries the *actual* identifier (`namespace` / `applicationId`), so we
+    // parse it from there. Fall back gracefully for non-dx/odd builds.
+    let package = android_identifier_from_gradle(&app_module)
+        .or_else(|| std::env::var("WRY_ANDROID_PACKAGE").ok())
+        .unwrap_or_else(|| {
+            println!(
+                "cargo:warning=could not determine Android package identifier; \
+                 defaulting to 'dev.dioxus.main'"
+            );
+            "dev.dioxus.main".to_string()
+        });
 
-    if gs_src.exists() {
-        let gs_dst = app_module.join("google-services.json");
-        fs::copy(&gs_src, &gs_dst).ok();
-        println!("cargo:rerun-if-changed={}", gs_src.display());
+    if package.is_empty() {
+        println!(
+            "cargo:warning=empty Android package identifier; FcmService will not be generated"
+        );
+        return;
+    }
+
+    // Make the resolved package observable to the runtime crate (android.rs), so
+    // JNI lookups agree with the generated Kotlin class.
+    println!("cargo:rustc-env=FCM_ANDROID_PACKAGE={package}");
+
+    // Regenerate the JNI symbols with the authoritative package (overrides the
+    // fallback emitted above).
+    emit_jni_symbols(&package);
+
+    // ---- Where the generated Kotlin files go ----
+    // dx pins `WRY_ANDROID_KOTLIN_FILES_OUT_DIR` to .../kotlin/dev/dioxus/main
+    // (wry's hardcoded package), which does NOT match the app's real identifier.
+    // Since our generated class declares `package <real-identifier>`, its source
+    // must live in <app>/src/main/kotlin/<real-identifier path> so the package
+    // matches the directory (a gradle/kotlinc requirement). Override the out dir
+    // with one derived from the resolved package.
+    let kotlin_out_dir = app_module
+        .join("src")
+        .join("main")
+        .join("kotlin")
+        .join(package.replace('.', "/"));
+    // ---- Copy google-services.json into the app module ----
+    // The Google Services Gradle plugin (applied below) requires this file in the
+    // app module. dx runs build scripts with cwd = CARGO_MANIFEST_DIR (the crate),
+    // not the app, and does not expose the app root via env. dx lays the generated
+    // gradle tree out under <app-root>/target/dx/<name>/<mode>/android/app/app, so
+    // we can locate the app root by walking up until a `target` directory.
+    let app_root = {
+        let mut dir = Some(app_module.as_path());
+        let mut found = None;
+        while let Some(d) = dir {
+            if d.join("target").is_dir() {
+                found = Some(d.to_path_buf());
+                break;
+            }
+            dir = d.parent();
+        }
+        found
+    };
+
+    let gs_src = app_root.as_ref().map(|r| r.join("android/google-services.json"));
+
+    if let Some(gs_src) = gs_src {
+        if gs_src.exists() {
+            let gs_dst = app_module.join("google-services.json");
+            if let Err(e) = fs::copy(&gs_src, &gs_dst) {
+                println!("cargo:warning=failed to copy google-services.json: {e}");
+            } else {
+                println!("cargo:rerun-if-changed={}", gs_src.display());
+            }
+        } else {
+            println!(
+                "cargo:warning=google-services.json not found at {}",
+                gs_src.display()
+            );
+        }
     } else {
         println!(
-            "cargo:warning=google-services.json not found at {}",
-            gs_src.display()
+            "cargo:warning=could not locate app root; google-services.json not copied"
         );
     }
 
@@ -71,6 +143,7 @@ fn main() {
     // Call the new function here:
     //enable_build_config(&app_module);
 
+    // -------------------
     // ---- Generate Kotlin files from templates ----
     let template_dir =
         PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("src/android/kotlin");
@@ -89,10 +162,127 @@ fn main() {
         );
 
         let out_path = kotlin_out_dir.join(file.file_name());
+        if let Some(parent) = out_path.parent() {
+            fs::create_dir_all(parent)
+                .expect("failed to create kotlin output dir");
+        }
         if fs::read_to_string(&out_path).map_or(true, |o| o != out) {
             fs::write(&out_path, &out).expect("failed to write generated kotlin");
         }
         println!("cargo:rerun-if-changed={}", out_path.display());
+    }
+
+    // Although the app declares the FcmService in its own custom manifest, the
+    // bundled dx CLI (0.8.0-alpha.1) ignores `[android] custom_manifest` and
+    // writes its own generated manifest. To guarantee the class is registered,
+    // inject the <service> element into the generated app manifest ourselves.
+    ensure_fcm_service_in_manifest(&app_module, &package);
+}
+
+/// Emit the JNI-exported native-callback symbols into `OUT_DIR/generated_native.rs`.
+/// JVM resolves `external` native methods by symbol name, so exporting the
+/// `Java_<pkg>_FcmService_nativeOnXxx` symbols guarantees Firebase-triggered
+/// callbacks (onNewToken etc.) bind even when they fire on a background thread
+/// before the crate lazily calls `register_native_methods`.
+fn emit_jni_symbols(package: &str) {
+    let jni_class = format!("{}_FcmService", package.replace('.', "_"));
+    let native_src = format!(
+        "// AUTO-GENERATED by dioxus-fcm build.rs. DO NOT MODIFY.\n\
+         #[unsafe(no_mangle)]\n\
+         pub extern \"system\" fn Java_{jni_class}_nativeOnToken(\n             env: jni::JNIEnv, class: jni::objects::JClass, token: jni::objects::JString,\n         ) {{ crate::android::fcm_native_on_token(env, class, token) }}\n\
+         #[unsafe(no_mangle)]\n\
+         pub extern \"system\" fn Java_{jni_class}_nativeOnError(\n             env: jni::JNIEnv, class: jni::objects::JClass, msg: jni::objects::JString,\n         ) {{ crate::android::fcm_native_on_error(env, class, msg) }}\n\
+         #[unsafe(no_mangle)]\n\
+         pub extern \"system\" fn Java_{jni_class}_nativeOnPermissionResult(\n             _env: jni::JNIEnv, _class: jni::objects::JClass, granted: jni::sys::jboolean,\n         ) {{ crate::android::fcm_native_on_permission_result(_env, _class, granted) }}\n"
+    );
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let native_out = out_dir.join("generated_native.rs");
+    fs::create_dir_all(&out_dir).ok();
+    if fs::read_to_string(&native_out).map_or(true, |o| o != native_src) {
+        fs::write(&native_out, &native_src).expect("failed to write generated_native.rs");
+    }
+    println!("cargo:rerun-if-changed={}", native_out.display());
+}
+
+/// Parse the Android application identifier (package name) from the generated
+/// app `build.gradle.kts`:
+///
+/// ```kotlin
+/// android { namespace="org.taalbubbl.dev" ... }
+///
+/// defaultConfig { applicationId = "org.taalbubbl.dev" ... }
+/// ```
+///
+/// dx populates this file from the project's Dioxus.toml `[bundle] identifier`
+/// (via `bundle_identifier()`), so it is the authoritative source — unlike the
+/// hardcoded `WRY_ANDROID_PACKAGE=dev.dioxus.main` env var that dx also sets for
+/// wry's internal use.
+fn android_identifier_from_gradle(app_module: &std::path::Path) -> Option<String> {
+    let app_gradle = app_module.join("build.gradle.kts");
+    let contents = fs::read_to_string(&app_gradle).ok()?;
+
+    let candidate = contents
+        .lines()
+        .map(str::trim)
+        .filter_map(|line| {
+            // namespace="x" or namespace = "x"
+            let after_ns = line.strip_prefix("namespace")?;
+            let q = after_ns.find('"')? + 1;
+            let rest = &after_ns[q..];
+            let end = rest.find('"')?;
+            Some(rest[..end].to_string())
+        })
+        .find(|id| !id.is_empty());
+
+    if candidate.is_none() {
+        println!(
+            "cargo:warning=no namespace found in {}; FcmService will use WRY_ANDROID_PACKAGE",
+            app_gradle.display()
+        );
+    }
+    candidate
+}
+
+/// Ensure the FcmService `<service>` entry appears in the generated app
+/// AndroidManifest.xml. dx rewrites this file on every build, so we add the
+/// element idempotently right after the `<application ...>` opening tag.
+///
+/// Failing to register the class means Firebase never delivers to it, and the
+/// manifest merger silently drops an unresolved class.
+fn ensure_fcm_service_in_manifest(app_module: &std::path::Path, package: &str) {
+    let manifest_path = app_module.join("src").join("main").join("AndroidManifest.xml");
+    let Ok(mut manifest) = fs::read_to_string(&manifest_path) else {
+        println!(
+            "cargo:warning=no AndroidManifest.xml at {}; FcmService not registered",
+            manifest_path.display()
+        );
+        return;
+    };
+
+    let service_name = format!("{package}.FcmService");
+    if manifest.contains(&service_name) {
+        return;
+    }
+
+    let service_xml = format!(
+        "\n        <service\n            android:name=\"{service_name}\"\n            android:exported=\"false\"\n        >\n            <intent-filter>\n                <action android:name=\"com.google.firebase.MESSAGING_EVENT\" />\n            </intent-filter>\n        </service>\n"
+    );
+
+    // Insert after the <application ...> opening tag (first ``<application`` line).
+    if let Some(idx) = manifest.find("<application") {
+        let insert_at = manifest[idx..]
+            .find('>')
+            .map(|off| idx + off + 1)
+            .unwrap_or(manifest.len());
+        manifest.insert_str(insert_at, &service_xml);
+        if let Err(e) = fs::write(&manifest_path, &manifest) {
+            println!(
+                "cargo:warning=failed to write AndroidManifest.xml for FcmService: {e}"
+            );
+        }
+        println!("cargo:rerun-if-changed={}", manifest_path.display());
+    } else {
+        println!("cargo:warning=no <application> tag in AndroidManifest.xml; FcmService service not injected");
     }
 }
 
