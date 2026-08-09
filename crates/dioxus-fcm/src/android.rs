@@ -11,7 +11,7 @@ static PENDING_PERMISSION: Mutex<Option<oneshot::Sender<bool>>> = Mutex::new(Non
 
 /// Package baked in at build time from WRY_ANDROID_PACKAGE.
 /// Falls back for non-dx builds / IDE analysis.
-const ANDROID_PACKAGE: &str = match option_env!("FCM_ANDROID_PACKAGE") {
+const ANDROID_PACKAGE: &str = match option_env!("WRY_ANDROID_PACKAGE") {
     Some(p) => p,
     None => "dev.dioxus.main",
 };
