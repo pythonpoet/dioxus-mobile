@@ -36,6 +36,8 @@ jobs:
       # This is important if `nix develop` itself is taking a long time.
       - name: Magic Nix Cache
         uses: DeterminateSystems/magic-nix-cache-action@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         # If @v9 is not current anymore, use the latest major version.
 
       - name: Get Rust version from Nix dev shell
