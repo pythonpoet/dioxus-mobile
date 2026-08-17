@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  This is the fallback used when the consuming app hasn't provided its own
+  GoogleService-Info.plist yet. build.rs copies whichever of these applies into
+  Sources/Resources/GoogleService-Info.plist (gitignored, never committed) before
+  dx compiles this Swift package:
+
+    1. <app>/ios/GoogleService-Info.plist, if the app has one (see dioxus-fcm's README)
+    2. this file, otherwise
+
+  FcmPlugin.nativeConfigure() detects GOOGLE_APP_ID == "REPLACE_ME" and skips
+  FirebaseApp.configure() (logging a warning instead of crashing), so request_token()
+  will always return None and request_notification_permission() will still work (it
+  doesn't need Firebase) but won't be backed by a real FCM token.
+-->
+<plist version="1.0">
+<dict>
+    <key>IS_PLACEHOLDER</key>
+    <true/>
+    <key>API_KEY</key>
+    <string>REPLACE_ME</string>
+    <key>GCM_SENDER_ID</key>
+    <string>REPLACE_ME</string>
+    <key>PLIST_VERSION</key>
+    <string>1</string>
+    <key>BUNDLE_ID</key>
+    <string>REPLACE_ME</string>
+    <key>PROJECT_ID</key>
+    <string>REPLACE_ME</string>
+    <key>STORAGE_BUCKET</key>
+    <string>REPLACE_ME</string>
+    <key>IS_ADS_ENABLED</key>
+    <false/>
+    <key>IS_ANALYTICS_ENABLED</key>
+    <false/>
+    <key>IS_APPINVITE_ENABLED</key>
+    <false/>
+    <key>IS_GCM_ENABLED</key>
+    <true/>
+    <key>IS_SIGNIN_ENABLED</key>
+    <false/>
+    <key>GOOGLE_APP_ID</key>
+    <string>REPLACE_ME</string>
+</dict>
+</plist>

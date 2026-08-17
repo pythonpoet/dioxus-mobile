@@ -1,33 +1,66 @@
-use std::ffi::{CStr, c_char};
+//! iOS bridge for dioxus-fcm.
+//!
+//! Binds directly to a Swift Package (`src/ios/plugin`, see `Sources/FcmPlugin.swift`)
+//! via the `#[manganis::ffi]` macro. dx extracts the linked `SwiftPackageMetadata`,
+//! compiles that package into a dynamic framework, and links it into the app bundle
+//! automatically at `dx build --ios` time — there's no Xcode project to hand-edit.
+//!
+//! Firebase needs `GoogleService-Info.plist`; see
+//! `src/ios/plugin/Sources/Resources/GoogleService-Info.plist` for where that goes.
 
-extern "C" {
-    /// Implemented in Swift (FcmBridge.swift)
-    fn fcm_request_token();
+use once_cell::sync::Lazy;
+
+#[manganis::ffi("src/ios/plugin")]
+unsafe extern "Swift" {
+    /// The native FcmPlugin class (see Sources/FcmPlugin.swift).
+    pub type FcmPlugin;
+
+    /// Load GoogleService-Info.plist and configure Firebase + the messaging/notification
+    /// delegates. Safe to call more than once.
+    pub fn native_configure(this: &FcmPlugin) -> ();
+
+    /// Show the system permission dialog; blocks until the user responds (or times out).
+    /// Returns "true"/"false" — see the note on the Swift side for why not `Bool`.
+    pub fn native_request_permission(this: &FcmPlugin) -> String;
+
+    /// Synchronous permission check — no dialog. Returns "true"/"false".
+    pub fn native_has_permission(this: &FcmPlugin) -> String;
+
+    /// Fetch the FCM token; blocks until Firebase delivers it (or times out).
+    /// Empty string means "no token" (Firebase not configured, or timeout/error).
+    pub fn native_request_token(this: &FcmPlugin) -> String;
 }
 
-pub fn request_token() {
-    unsafe { fcm_request_token() }
-}
+/// One retained plugin instance for the process lifetime. `Messaging.delegate` and
+/// `UNUserNotificationCenter.delegate` don't retain their delegate, so the Swift object
+/// backing this has to stay alive for callbacks (like token refresh) to keep firing.
+static PLUGIN: Lazy<FcmPlugin> =
+    Lazy::new(|| FcmPlugin::new().expect("failed to initialize the FcmPlugin Swift bridge"));
 
-/// Called FROM Swift when APNs/FCM token is available.
-#[no_mangle]
-pub extern "C" fn fcm_on_token(token: *const c_char) {
-    if token.is_null() {
-        return;
+pub fn init_fcm() {
+    if let Err(e) = native_configure(&*PLUGIN) {
+        tracing::error!("dioxus-fcm: native_configure failed: {e}");
     }
-    let s = unsafe { CStr::from_ptr(token) }
-        .to_string_lossy()
-        .into_owned();
-    crate::on_native_token(s);
 }
 
-#[no_mangle]
-pub extern "C" fn fcm_on_error(msg: *const c_char) {
-    if msg.is_null() {
-        return;
-    }
-    let s = unsafe { CStr::from_ptr(msg) }
-        .to_string_lossy()
-        .into_owned();
-    crate::on_native_error(s);
+pub async fn request_notification_permission() -> bool {
+    tokio::task::spawn_blocking(|| {
+        native_request_permission(&*PLUGIN).unwrap_or_default() == "true"
+    })
+    .await
+    .unwrap_or(false)
+}
+
+/// Synchronous — the underlying `getNotificationSettings` completion handler resolves on
+/// a private queue almost immediately, so a short blocking wait here is safe (same
+/// contract as `android::notifications_enabled`).
+pub fn has_notification_permission() -> bool {
+    native_has_permission(&*PLUGIN).unwrap_or_default() == "true"
+}
+
+pub async fn request_token() -> Option<String> {
+    let token = tokio::task::spawn_blocking(|| native_request_token(&*PLUGIN).unwrap_or_default())
+        .await
+        .unwrap_or_default();
+    if token.is_empty() { None } else { Some(token) }
 }

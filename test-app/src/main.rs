@@ -49,6 +49,14 @@ pub fn App() -> Element {
     let mut is_playing = use_signal(|| false);
     let mut mic_permission_state = use_signal(|| "Unknown".to_string());
     let mut file_info_str = use_signal(|| "No recording found".to_string());
+    let mut notif_permission = use_signal(|| None::<bool>);
+    let mut fcm_token = use_signal(|| None::<String>);
+
+    // Initialize Firebase / the native notification bridge once at startup
+    // (Android: FCM init; iOS: configures Firebase from GoogleService-Info.plist).
+    use_effect(move || {
+        dioxus_fcm::init_fcm();
+    });
 
     // 3. Helper to dynamically update the recording file size metadata on the UI
     let mut refresh_file_metadata = move || {
@@ -441,6 +449,87 @@ pub fn App() -> Element {
                             }
                         },
                         if is_playing() { "■  Stop Local Playback" } else { "▶  Listen to Denoised Audio" }
+                    }
+                }
+            }
+
+            // Push Notifications Card
+            div {
+                style: "
+                    width: 100%;
+                    max-width: 440px;
+                    background: rgba(30, 41, 59, 0.7);
+                    backdrop-filter: blur(12px);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 24px;
+                    padding: 32px;
+                    margin-top: 20px;
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+                ",
+
+                h2 {
+                    style: "
+                        font-size: 24px;
+                        font-weight: 800;
+                        text-align: center;
+                        margin-top: 0;
+                        margin-bottom: 24px;
+                        background: linear-gradient(90deg, #38bdf8, #818cf8);
+                        -webkit-background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        letter-spacing: -0.5px;
+                    ",
+                    "Push Notifications"
+                }
+
+                div {
+                    style: "display: flex; flex-direction: column; gap: 14px;",
+
+                    button {
+                        style: "
+                            background: rgba(56, 189, 248, 0.1);
+                            color: #38bdf8;
+                            border: 1px solid rgba(56, 189, 248, 0.3);
+                            border-radius: 12px;
+                            padding: 12px 16px;
+                            font-size: 14px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                        ",
+                        onclick: move |_| async move {
+                            notif_permission.set(Some(dioxus_fcm::request_notification_permission().await));
+                        },
+                        "Request Notification Permission"
+                    }
+                    if let Some(granted) = notif_permission() {
+                        p { style: "margin: 0; font-size: 14px; color: #94a3b8;",
+                            if granted { "🔔 Granted" } else { "🚫 Denied" }
+                        }
+                    }
+
+                    button {
+                        style: "
+                            background: rgba(56, 189, 248, 0.1);
+                            color: #38bdf8;
+                            border: 1px solid rgba(56, 189, 248, 0.3);
+                            border-radius: 12px;
+                            padding: 12px 16px;
+                            font-size: 14px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                        ",
+                        onclick: move |_| async move {
+                            fcm_token.set(dioxus_fcm::request_token().await);
+                        },
+                        "Get FCM Token"
+                    }
+                    if let Some(t) = fcm_token() {
+                        p {
+                            style: "margin: 0; font-size: 12px; font-family: monospace; color: #34d399; word-break: break-all;",
+                            "{t}"
+                        }
                     }
                 }
             }

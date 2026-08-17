@@ -2,6 +2,12 @@ use std::{fs, path::PathBuf};
 
 fn main() {
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+
+    if target_os == "ios" {
+        stage_ios_google_service_plist();
+        return;
+    }
+
     if target_os != "android" {
         return;
     }
@@ -386,4 +392,71 @@ fn enable_build_config(app_module: &std::path::Path) {
         }
         Err(e) => println!("cargo:warning=Could not read {}: {e}", app_gradle.display()),
     }
+}
+
+/// Stage `Sources/Resources/GoogleService-Info.plist` (gitignored — see `.gitignore`)
+/// for the Swift package build. Mirrors the Android side's `google-services.json` copy:
+/// the *real* file lives in the consuming app's source tree (`<app>/ios/GoogleService-Info.plist`),
+/// never inside this crate, so the crate stays reusable and no Firebase secrets end up
+/// tracked in dioxus-fcm's own git history.
+///
+/// Falls back to the tracked `GoogleService-Info.example.plist` placeholder when the app
+/// hasn't provided one yet, so the Swift package always has *something* to bundle (SwiftPM
+/// requires the declared resource to exist) and `FcmPlugin` can detect "not configured yet"
+/// safely instead of failing to build.
+fn stage_ios_google_service_plist() {
+    let manifest_dir =
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"));
+    let plugin_dir = manifest_dir.join("src/ios/plugin");
+    let dest = plugin_dir.join("Sources/Resources/GoogleService-Info.plist");
+    let example = plugin_dir.join("GoogleService-Info.example.plist");
+
+    let src = find_app_google_service_plist(&manifest_dir).unwrap_or_else(|| {
+        println!(
+            "cargo:warning=<app>/ios/GoogleService-Info.plist not found — using the \
+             dioxus-fcm placeholder, so Firebase push notifications won't work until you add \
+             one (see crates/dioxus-fcm/README.MD)"
+        );
+        example
+    });
+
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).ok();
+    }
+    if let Err(e) = fs::copy(&src, &dest) {
+        println!(
+            "cargo:warning=failed to copy {} to {}: {e}",
+            src.display(),
+            dest.display()
+        );
+    }
+    println!("cargo:rerun-if-changed={}", src.display());
+}
+
+/// Walk up from this crate's manifest dir to the Cargo workspace root (the first ancestor
+/// whose `Cargo.toml` has a `[workspace]` table), then look for `ios/GoogleService-Info.plist`
+/// either at the workspace root itself or in one of its immediate member directories —
+/// whichever consuming app has one.
+fn find_app_google_service_plist(manifest_dir: &std::path::Path) -> Option<PathBuf> {
+    let mut dir = manifest_dir.parent();
+    while let Some(d) = dir {
+        let cargo_toml = d.join("Cargo.toml");
+        if let Ok(contents) = fs::read_to_string(&cargo_toml) {
+            if contents.lines().any(|l| l.trim() == "[workspace]") {
+                let direct = d.join("ios/GoogleService-Info.plist");
+                if direct.is_file() {
+                    return Some(direct);
+                }
+                for entry in fs::read_dir(d).ok()?.flatten() {
+                    let candidate = entry.path().join("ios/GoogleService-Info.plist");
+                    if candidate.is_file() {
+                        return Some(candidate);
+                    }
+                }
+                return None;
+            }
+        }
+        dir = d.parent();
+    }
+    None
 }

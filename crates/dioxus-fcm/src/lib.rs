@@ -46,7 +46,7 @@ pub async fn request_token() -> Option<String> {
 
 #[cfg(target_os = "ios")]
 pub async fn request_token() -> Option<String> {
-    todo!("FCM token fetch is not implemented for iOS yet")
+    ios::request_token().await
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -62,7 +62,7 @@ pub async fn request_notification_permission() -> bool {
 
 #[cfg(target_os = "ios")]
 pub async fn request_notification_permission() -> bool {
-    todo!("notification permission request is not implemented for iOS yet")
+    ios::request_notification_permission().await
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -78,7 +78,7 @@ pub fn has_notification_permission() -> bool {
 
 #[cfg(target_os = "ios")]
 pub fn has_notification_permission() -> bool {
-    todo!("notification permission check is not implemented for iOS yet")
+    ios::has_notification_permission()
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -94,7 +94,7 @@ pub fn init_fcm() {
 
 #[cfg(target_os = "ios")]
 pub fn init_fcm() {
-    todo!("Firebase init is not implemented for iOS yet")
+    ios::init_fcm();
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
