@@ -2,9 +2,8 @@ name: Dioxus iOS CI
 
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "dev" ]
+
 
 jobs:
   build-and-test:
@@ -44,4 +43,4 @@ jobs:
         run: |
 
           # Use Dioxus CLI to serve/test on the running iOS simulator
-          dx serve --platform ios
+          cd test-app && dx serve --platform ios
