@@ -25,6 +25,9 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v16
+        with:
+          extra-conf: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
       # Cache the Nix store across workflow runs.
       # This is important if `nix develop` itself is taking a long time.
@@ -48,14 +51,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .cargo-home/registry
-            .cargo-home/git
-            .cargo-home/.crates.toml
-            .cargo-home/.crates2.json
+            .cargo-home/registry/index
+            .cargo-home/registry/cache
+            .cargo-home/git/db
             target
           key: v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-${{ hashFiles('Cargo.lock', 'flake.lock') }}
           restore-keys: |
-            v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-${{ hashFiles('Cargo.lock', 'flake.lock') }}-
             v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-
             v1-${{ runner.os }}-${{ runner.arch }}-ios-
 
