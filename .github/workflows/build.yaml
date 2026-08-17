@@ -1,96 +1,46 @@
-name: Build iOS
+name: Dioxus iOS CI
 
 on:
   push:
-    branches: [dev]
-
-env:
-  # Make Cargo use predictable locations inside the workspace.
-  CARGO_HOME: ${{ github.workspace }}/.cargo-home
-  CARGO_TARGET_DIR: ${{ github.workspace }}/target
-
-  # Better for CI caches.
-  CARGO_INCREMENTAL: 0
-
-  # Optional, but reduces target directory size a lot.
-  CARGO_PROFILE_DEV_DEBUG: 0
-  CARGO_PROFILE_RELEASE_DEBUG: 0
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
 
 jobs:
-  build-ios:
-    runs-on: macos-latest
-    permissions:
-          id-token: write
-          contents: read
+  build-and-test:
+    runs-on: macos-14 # Uses Apple Silicon (M1/M2) runners for faster compilation
+
     steps:
-      - uses: actions/checkout@v6
-      - uses: DeterminateSystems/determinate-nix-action@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Get Rust version from Nix dev shell
-        id: rust
-        run: |
-          set -euo pipefail
-
-          VERSION=$(
-            nix develop --accept-flake-config .#ios --command rustc --version \
-              | awk '{print $2}'
-          )
-
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Cargo registry, git deps, and target directory
-        uses: actions/cache@v4
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          path: |
-            .cargo-home/registry/index
-            .cargo-home/registry/cache
-            .cargo-home/git/db
-            target
-          key: v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-${{ hashFiles('Cargo.lock', 'flake.lock') }}
-          restore-keys: |
-            v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-
-            v1-${{ runner.os }}-${{ runner.arch }}-ios-
+          targets: |
+            aarch64-apple-ios-sim
+            x86_64-apple-ios
 
-      - name: Verify Cargo environment
+      - name: Cache Cargo Dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Dioxus CLI
         run: |
-          nix develop --accept-flake-config .#ios --command bash -lc '
-            set -euxo pipefail
+          cargo install dioxus-cli --force
 
-            printenv CARGO_HOME || true
-            printenv CARGO_TARGET_DIR || true
-
-            cargo --version
-            rustc --version
-
-            dx --version || true
-          '
-
-      # Optional but useful: fail early if dependencies cannot be fetched.
-      - name: Fetch dependencies
-        run: |
-          nix develop --accept-flake-config .#ios --command bash -lc '
-            cargo fetch --locked
-          '
-
-      - name: Build iOS binary
-        run: |
-          nix develop --accept-flake-config .#ios --command cd test-app && dx build --platform ios --release
-
-      - name: Show target sizes
-        if: always()
-        run: |
-          du -sh target || true
-          du -sh target/* || true
-
-      - name: List build output
-        run: |
-          find target -name '*.framework' -o -name '*.app' | head -50
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Boot iOS Simulator
+        uses: dotdoom/launch-ios-simulator@v1
         with:
-          name: iOS-build
-          path: |
-            target/dx/
-            target/aarch64-apple-ios/release/
-          if-no-files-found: warn
+          model: 'iPhone 15'
+          os: 'iOS'
+          wait_for_boot: true
+
+      - name: Build App for Simulator
+        run: |
+          # Compiles the app targeting the iOS simulator
+          cargo build --target aarch64-apple-ios-sim
+
+      - name: Run Dioxus iOS App / Simulator Check
+        run: |
+          # Use Dioxus CLI to serve/test on the running iOS simulator
+          dx serve --platform ios
