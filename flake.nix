@@ -17,7 +17,7 @@
   outputs = { self, flake-parts, ... } @inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
-        inputs.android-nixpkgs.hmModule
+        inputs.nci.flakeModule
       ];
 
       systems = [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" "aarch64-linux" ];
