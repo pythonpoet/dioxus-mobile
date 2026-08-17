@@ -362,6 +362,7 @@
                 openssl
                 openssl.dev
                 pkg-config
+                alsa-lib
               ] ++ rustBuildInputs;
 
               shellHook = ''
