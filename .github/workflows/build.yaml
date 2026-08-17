@@ -77,12 +77,7 @@ jobs:
 
       - name: Build iOS binary
         run: |
-          nix develop --accept-flake-config .#ios --command cd test-app && dx serve --ios
-
-          # In CI, you usually want one of these instead of `dx serve`:
-          #
-          # nix develop --accept-flake-config .#ios --command dx build --ios --release
-          # nix develop --accept-flake-config .#ios --command dx bundle --ios --release
+          nix develop --accept-flake-config .#ios --command cd test-app && dx build --platform ios --release
 
       - name: Show target sizes
         if: always()

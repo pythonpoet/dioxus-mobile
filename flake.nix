@@ -4,17 +4,21 @@
     flake-parts.url      = "github:hercules-ci/flake-parts";
     rust-overlay.url     = "github:oxalica/rust-overlay";
     dioxus-cli.url       = "github:DioxusLabs/dioxus";
-    android-nixpkgs.url  = "github:tadfisher/android-nixpkgs";
-
-    # nix-cargo-integration input
-    nci.url = "github:90-008/nix-cargo-integration";
-    nci.inputs.nixpkgs.follows = "nixpkgs";
+    android-nixpkgs= {
+      url  = "github:tadfisher/android-nixpkgs/stable";
+      inputs.nixpkgs.follows = "nixpkgs";
+    }
+    nic = {
+      url = "github:90-008/nix-cargo-integration";
+      inputs.nixpkgs.follows = "nixpkgs";
+    }
   };
 
   outputs = { self, flake-parts, ... } @inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         inputs.nci.flakeModule
+        inputs.android-nixpkgs.hmModule
       ];
 
       systems = [ "x86_64-linux" "x86_64-darwin" "aarch64-darwin" "aarch64-linux" ];
@@ -163,8 +167,6 @@
           androidTargets = [
             "aarch64-linux-android"
             "armv7-linux-androideabi"
-            "x86_64-linux-android"
-            "i686-linux-android"
           ];
 
           iosTargets = [
