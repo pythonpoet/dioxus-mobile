@@ -28,11 +28,17 @@ jobs:
           cargo install dioxus-cli --force
 
       - name: Boot iOS Simulator
-        uses: dotdoom/launch-ios-simulator@v1
-        with:
-          model: 'iPhone 15'
-          os: 'iOS'
-          wait_for_boot: true
+        run: |
+          # Find the UDID of an available iPhone 15 simulator (or iPhone 14 / latest)
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 15" | awk -F '[()]' '{print $2}')
+
+          # Fallback to any available iPhone if iPhone 15 isn't matched directly
+          if [ -z "$UDID" ]; then
+            UDID=$(xcrun simctl list devices available | grep -m1 "iPhone" | awk -F '[()]' '{print $2}')
+          fi
+
+          echo "Booting simulator UDID: $UDID"
+          xcrun simctl boot "$UDID"
 
       - name: Build App for Simulator
         run: |
