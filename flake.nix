@@ -4,14 +4,14 @@
     flake-parts.url      = "github:hercules-ci/flake-parts";
     rust-overlay.url     = "github:oxalica/rust-overlay";
     dioxus-cli.url       = "github:DioxusLabs/dioxus";
-    android-nixpkgs= {
+    android-nixpkgs = {
       url  = "github:tadfisher/android-nixpkgs/stable";
       inputs.nixpkgs.follows = "nixpkgs";
-    }
-    nic = {
+    }; # Fixed: Added missing semicolon here
+    nci = { # Fixed: Changed 'nic' to 'nci' to match inputs.nci.flakeModule
       url = "github:90-008/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
-    }
+    };
   };
 
   outputs = { self, flake-parts, ... } @inputs:
@@ -180,7 +180,9 @@
             targets    = [ "wasm32-unknown-unknown" ] ++ androidTargets ++ iosTargets;
           };
 
+          # Fixed: Defined explicit NDK version variable
           ndkVersion = "26.1.10909125";
+
           androidSdk = inputs.android-nixpkgs.sdk.${system} (p: with p; [
             cmdline-tools-latest
             build-tools-34-0-0
@@ -199,14 +201,7 @@
 
           # ── NCI Declarative Configuration ────────────────────────────────────
           nci = {
-            # projects.default = {
-            #   relPath = ./.; # Points to current directory as workspace root
-            #   export = true;
-            # };
-
             crates.default = {
-              # If your crate name differs from the default project, specify it here
-              # e.g., export = true;
               drvConfig = {
                 mkDerivation = {
                   buildInputs = rustBuildInputs;
