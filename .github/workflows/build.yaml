@@ -42,5 +42,6 @@ jobs:
 
       - name: Run Dioxus iOS App / Simulator Check
         run: |
+
           # Use Dioxus CLI to serve/test on the running iOS simulator
           dx serve --platform ios
