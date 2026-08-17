@@ -77,7 +77,7 @@ jobs:
 
       - name: Build iOS binary
         run: |
-          nix develop --accept-flake-config .#ios --command dx serve --ios
+          nix develop --accept-flake-config .#ios --command cd test-app && dx serve --ios
 
           # In CI, you usually want one of these instead of `dx serve`:
           #
