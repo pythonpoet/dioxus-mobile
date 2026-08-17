@@ -13,7 +13,7 @@
 use std::sync::Arc;
 
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation};
-use serde::{Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Serialize};
 
 /// Issue an HS256 JWT.
 ///

@@ -1,7 +1,10 @@
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]
-pub use client::{provide_jwt,try_use_jwt_diagnostics, try_use_jwt, provide_jwt_with, use_jwt, use_auth_headers, set_bearer_header, init, JwtAuth, RequireAuth};
+pub use client::{
+    init, provide_jwt, provide_jwt_with, set_bearer_header, try_use_jwt, try_use_jwt_diagnostics,
+    use_auth_headers, use_jwt, JwtAuth, RequireAuth,
+};
 
 #[cfg(feature = "client")]
 // Re-export the native storage initialization macro so applications using
@@ -13,10 +16,10 @@ pub use dioxus_sdk_storage::set_dir;
 // HS256 issue/verify helpers in [`server`].
 #[cfg(feature = "server")]
 pub use axum_jwt_auth::{
-    AuthError, BearerTokenExtractor, Claims, CookieTokenExtractor, Decoder, ExtractorConfig,
-    HeaderTokenExtractor, LocalDecoder, RemoteJwksDecoder, RemoteJwksDecoderBuilder,
-    RemoteJwksDecoderConfig, RemoteJwksDecoderConfigBuilder, TokenExtractor,
-    define_cookie_extractor, define_header_extractor,
+    define_cookie_extractor, define_header_extractor, AuthError, BearerTokenExtractor, Claims,
+    CookieTokenExtractor, Decoder, ExtractorConfig, HeaderTokenExtractor, LocalDecoder,
+    RemoteJwksDecoder, RemoteJwksDecoderBuilder, RemoteJwksDecoderConfig,
+    RemoteJwksDecoderConfigBuilder, TokenExtractor,
 };
 #[cfg(feature = "server")]
 pub mod server;

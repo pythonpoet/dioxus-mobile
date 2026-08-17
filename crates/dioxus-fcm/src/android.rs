@@ -55,20 +55,21 @@ fn fcm_jclass(env: &mut JNIEnv) -> Option<GlobalRef> {
     let context = unsafe { JObject::from_raw(ctx.context().cast()) };
 
     // context.getClassLoader()
-    let class_loader = match env.call_method(&context, "getClassLoader", "()Ljava/lang/ClassLoader;", &[]) {
-        Ok(v) => match v.l() {
-            Ok(o) => o,
+    let class_loader =
+        match env.call_method(&context, "getClassLoader", "()Ljava/lang/ClassLoader;", &[]) {
+            Ok(v) => match v.l() {
+                Ok(o) => o,
+                Err(e) => {
+                    tracing::error!("getClassLoader returned non-object: {e:?}");
+                    return None;
+                }
+            },
             Err(e) => {
-                tracing::error!("getClassLoader returned non-object: {e:?}");
+                let detail = describe_pending_exception(env);
+                tracing::error!("getClassLoader failed: {e:?} | java: {detail}");
                 return None;
             }
-        },
-        Err(e) => {
-            let detail = describe_pending_exception(env);
-            tracing::error!("getClassLoader failed: {e:?} | java: {detail}");
-            return None;
-        }
-    };
+        };
 
     // classLoader.loadClass("org.taalbubbl.dev.FcmService")  (dots, not slashes)
     let Ok(class_name) = env.new_string(fcm_class_name()) else {
@@ -91,7 +92,10 @@ fn fcm_jclass(env: &mut JNIEnv) -> Option<GlobalRef> {
         },
         Err(e) => {
             let detail = describe_pending_exception(env);
-            tracing::error!("loadClass failed for {}: {e:?} | java: {detail}", fcm_class_name());
+            tracing::error!(
+                "loadClass failed for {}: {e:?} | java: {detail}",
+                fcm_class_name()
+            );
             return None;
         }
     };
@@ -156,11 +160,7 @@ fn get_fcm_class<'local>(env: &mut JNIEnv<'local>) -> Option<JClass<'local>> {
 /// resolved identifier and bind before any Firebase-triggered callback can fire.
 ///
 /// JNI signature: `(JNIEnv*, jobject clazz, jstring token) -> void`.
-pub extern "system" fn fcm_native_on_token(
-    mut env: JNIEnv,
-    _class: JClass,
-    token: JString,
-) {
+pub extern "system" fn fcm_native_on_token(mut env: JNIEnv, _class: JClass, token: JString) {
     match env.get_string(&token) {
         Ok(s) => {
             let token: String = s.into();
@@ -422,4 +422,3 @@ pub fn notifications_enabled() -> bool {
     .and_then(|v| v.z())
     .unwrap_or(false)
 }
-

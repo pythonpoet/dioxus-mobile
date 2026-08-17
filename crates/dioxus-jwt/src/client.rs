@@ -25,7 +25,7 @@ use serde::de::DeserializeOwned;
 pub fn set_bearer_header(token: Option<String>) {
     #[cfg(not(feature = "server"))]
     {
-        use dioxus::prelude::dioxus_fullstack::{HeaderMap, set_request_headers};
+        use dioxus::prelude::dioxus_fullstack::{set_request_headers, HeaderMap};
 
         let mut headers = HeaderMap::new();
         if let Some(token) = token {
@@ -86,7 +86,6 @@ fn decode_claims_unverified<C: DeserializeOwned>(
     Ok(jsonwebtoken::dangerous::insecure_decode::<C>(token)?.claims)
 }
 
-
 /// Default key under which the token is persisted.
 pub const DEFAULT_STORAGE_KEY: &str = "dioxus-jwt:token";
 
@@ -117,11 +116,7 @@ impl fmt::Display for JwtEnvironment {
         write!(
             formatter,
             "os={}, architecture={}, android={}, wasm={}, debug={}",
-            self.os,
-            self.architecture,
-            self.android,
-            self.wasm,
-            self.debug_build,
+            self.os, self.architecture, self.android, self.wasm, self.debug_build,
         )
     }
 }
@@ -184,20 +179,16 @@ pub enum JwtError {
 impl fmt::Display for JwtError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::MissingContext => {
-                formatter.write_str(
-                    "no JwtAuth exists in context; call provide_jwt() \
+            Self::MissingContext => formatter.write_str(
+                "no JwtAuth exists in context; call provide_jwt() \
                      in an ancestor component",
-                )
-            }
+            ),
 
             Self::InvalidStorageKey(reason) => {
                 write!(formatter, "invalid JWT storage key: {reason}")
             }
 
-            Self::MissingToken => {
-                formatter.write_str("no JWT token is currently stored")
-            }
+            Self::MissingToken => formatter.write_str("no JWT token is currently stored"),
 
             Self::InvalidToken(reason) => {
                 write!(formatter, "JWT could not be decoded: {reason}")
@@ -226,10 +217,7 @@ impl fmt::Debug for JwtAuth {
             .debug_struct("JwtAuth")
             .field("storage_kind", &self.storage_kind)
             .field("has_token", &token.is_some())
-            .field(
-                "token_length",
-                &token.as_ref().map(String::len),
-            )
+            .field("token_length", &token.as_ref().map(String::len))
             .field("authenticated", &self.is_authenticated())
             .field("token", &token.as_ref().map(|_| "<redacted>"))
             .finish()
@@ -294,25 +282,17 @@ pub fn provide_jwt_with(storage_key: &str) -> JwtAuth {
     let key_for_log = storage_key.to_owned();
 
     use_hook(move || {
-        eprintln!(
-            "[dioxus-jwt] Initializing persistent JWT storage; key={key_for_log:?}"
-        );
+        eprintln!("[dioxus-jwt] Initializing persistent JWT storage; key={key_for_log:?}");
     });
 
-    let stored = use_persistent(
-        storage_key,
-        || Option::<String>::None,
-    );
+    let stored = use_persistent(storage_key, || Option::<String>::None);
 
     let auth = JwtAuth {
         stored,
         storage_kind: JwtStorageKind::Persistent,
     };
 
-    let diagnostics = JwtDiagnostics::new(
-        storage_key,
-        JwtStorageKind::Persistent,
-    );
+    let diagnostics = JwtDiagnostics::new(storage_key, JwtStorageKind::Persistent);
 
     use_context_provider(|| diagnostics);
     use_context_provider(|| auth)
@@ -346,33 +326,24 @@ pub fn provide_jwt_in_memory_with(storage_key: &str) -> JwtAuth {
         panic!("{error}");
     }
 
-    diagnostic(
-        "provide_jwt_in_memory_with: creating in-memory signal",
-    );
+    diagnostic("provide_jwt_in_memory_with: creating in-memory signal");
 
     let stored = use_signal(|| Option::<String>::None);
 
-    diagnostic(
-        "provide_jwt_in_memory_with: signal created successfully",
-    );
+    diagnostic("provide_jwt_in_memory_with: signal created successfully");
 
     let auth = JwtAuth {
         stored,
         storage_kind: JwtStorageKind::Memory,
     };
 
-    let diagnostics = JwtDiagnostics::new(
-        storage_key,
-        JwtStorageKind::Memory,
-    );
+    let diagnostics = JwtDiagnostics::new(storage_key, JwtStorageKind::Memory);
 
     use_context_provider(|| diagnostics);
 
     let provided = use_context_provider(|| auth);
 
-    diagnostic(
-        "provide_jwt_in_memory_with: initialization completed",
-    );
+    diagnostic("provide_jwt_in_memory_with: initialization completed");
 
     provided
 }
@@ -392,9 +363,7 @@ pub fn try_use_jwt() -> Result<JwtAuth, JwtError> {
         None => {
             let environment = JwtEnvironment::current();
 
-            diagnostic_error(format!(
-                "try_use_jwt: context is missing; {environment}"
-            ));
+            diagnostic_error(format!("try_use_jwt: context is missing; {environment}"));
 
             Err(JwtError::MissingContext)
         }
@@ -484,8 +453,7 @@ impl JwtAuth {
     ///
     /// This is only a client-side UX check. The signature is not verified.
     pub fn is_authenticated(&self) -> bool {
-        self.token()
-            .is_some_and(|token| !is_expired(&token))
+        self.token().is_some_and(|token| !is_expired(&token))
     }
 
     /// Decode claims without verifying the signature.
@@ -497,9 +465,8 @@ impl JwtAuth {
     pub fn try_claims<C: DeserializeOwned>(&self) -> Result<C, JwtError> {
         let token = self.token().ok_or(JwtError::MissingToken)?;
 
-        decode_claims_unverified::<C>(&token).map_err(|error| {
-            JwtError::InvalidToken(error.to_string())
-        })
+        decode_claims_unverified::<C>(&token)
+            .map_err(|error| JwtError::InvalidToken(error.to_string()))
     }
 
     /// Return the `exp` claim in Unix seconds, if present.
@@ -513,18 +480,14 @@ impl JwtAuth {
     pub fn safe_status(&self) -> JwtSafeStatus {
         let token = self.token();
         let token_length = token.as_ref().map(String::len);
-        let expires_at = token
-            .as_deref()
-            .and_then(decode_expiration);
+        let expires_at = token.as_deref().and_then(decode_expiration);
 
         JwtSafeStatus {
             storage_kind: self.storage_kind,
             has_token: token.is_some(),
             token_length,
             expires_at,
-            authenticated: token
-                .as_deref()
-                .is_some_and(|value| !is_expired(value)),
+            authenticated: token.as_deref().is_some_and(|value| !is_expired(value)),
         }
     }
 }
@@ -552,9 +515,7 @@ fn decode_expiration(token: &str) -> Option<u64> {
 }
 
 fn is_expired(token: &str) -> bool {
-    let Ok(probe) =
-        decode_claims_unverified::<ExpProbe>(token)
-    else {
+    let Ok(probe) = decode_claims_unverified::<ExpProbe>(token) else {
         diagnostic(
             "is_expired: token could not be decoded; \
              treating it as expired",
@@ -588,9 +549,7 @@ fn is_expired(token: &str) -> bool {
 }
 
 fn now_unix() -> u64 {
-    match web_time::SystemTime::now()
-        .duration_since(web_time::UNIX_EPOCH)
-    {
+    match web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH) {
         Ok(duration) => duration.as_secs(),
 
         Err(error) => {
@@ -608,19 +567,14 @@ fn now_unix() -> u64 {
 /// This component does not panic when the provider is missing. It renders the
 /// fallback instead and reports the context error.
 #[component]
-pub fn RequireAuth(
-    children: Element,
-    fallback: Option<Element>,
-) -> Element {
+pub fn RequireAuth(children: Element, fallback: Option<Element>) -> Element {
     match try_use_jwt() {
         Ok(auth) if auth.is_authenticated() => children,
 
         Ok(_) => fallback.unwrap_or_else(|| rsx! {}),
 
         Err(error) => {
-            diagnostic_error(format!(
-                "RequireAuth: JWT context unavailable: {error}"
-            ));
+            diagnostic_error(format!("RequireAuth: JWT context unavailable: {error}"));
 
             fallback.unwrap_or_else(|| rsx! {})
         }
@@ -649,9 +603,7 @@ mod tests {
 
     #[test]
     fn future_exp_is_not_expired() {
-        assert!(!is_expired(&token_with_exp(Some(
-            now_unix() + 3600,
-        ))));
+        assert!(!is_expired(&token_with_exp(Some(now_unix() + 3600,))));
     }
 
     #[test]

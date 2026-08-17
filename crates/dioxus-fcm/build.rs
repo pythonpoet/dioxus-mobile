@@ -111,7 +111,9 @@ fn main() {
         found
     };
 
-    let gs_src = app_root.as_ref().map(|r| r.join("android/google-services.json"));
+    let gs_src = app_root
+        .as_ref()
+        .map(|r| r.join("android/google-services.json"));
 
     if let Some(gs_src) = gs_src {
         if gs_src.exists() {
@@ -128,9 +130,7 @@ fn main() {
             );
         }
     } else {
-        println!(
-            "cargo:warning=could not locate app root; google-services.json not copied"
-        );
+        println!("cargo:warning=could not locate app root; google-services.json not copied");
     }
 
     // ---- Apply the google-services Gradle plugin (auto-init from google-services.json) ----
@@ -163,8 +163,7 @@ fn main() {
 
         let out_path = kotlin_out_dir.join(file.file_name());
         if let Some(parent) = out_path.parent() {
-            fs::create_dir_all(parent)
-                .expect("failed to create kotlin output dir");
+            fs::create_dir_all(parent).expect("failed to create kotlin output dir");
         }
         if fs::read_to_string(&out_path).map_or(true, |o| o != out) {
             fs::write(&out_path, &out).expect("failed to write generated kotlin");
@@ -250,7 +249,10 @@ fn android_identifier_from_gradle(app_module: &std::path::Path) -> Option<String
 /// Failing to register the class means Firebase never delivers to it, and the
 /// manifest merger silently drops an unresolved class.
 fn ensure_fcm_service_in_manifest(app_module: &std::path::Path, package: &str) {
-    let manifest_path = app_module.join("src").join("main").join("AndroidManifest.xml");
+    let manifest_path = app_module
+        .join("src")
+        .join("main")
+        .join("AndroidManifest.xml");
     let Ok(mut manifest) = fs::read_to_string(&manifest_path) else {
         println!(
             "cargo:warning=no AndroidManifest.xml at {}; FcmService not registered",
@@ -276,13 +278,13 @@ fn ensure_fcm_service_in_manifest(app_module: &std::path::Path, package: &str) {
             .unwrap_or(manifest.len());
         manifest.insert_str(insert_at, &service_xml);
         if let Err(e) = fs::write(&manifest_path, &manifest) {
-            println!(
-                "cargo:warning=failed to write AndroidManifest.xml for FcmService: {e}"
-            );
+            println!("cargo:warning=failed to write AndroidManifest.xml for FcmService: {e}");
         }
         println!("cargo:rerun-if-changed={}", manifest_path.display());
     } else {
-        println!("cargo:warning=no <application> tag in AndroidManifest.xml; FcmService service not injected");
+        println!(
+            "cargo:warning=no <application> tag in AndroidManifest.xml; FcmService service not injected"
+        );
     }
 }
 

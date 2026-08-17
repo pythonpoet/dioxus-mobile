@@ -4,6 +4,7 @@ members = [
     "crates/dioxus-fcm",
     "crates/dioxus-recorder",
     "crates/dioxus-jwt",
+    "test-app"
 ]
 resolver = "2"
 

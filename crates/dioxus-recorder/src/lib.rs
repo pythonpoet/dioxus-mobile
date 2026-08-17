@@ -8,18 +8,22 @@ pub enum MicPermission {
     Denied,
 }
 
-pub fn status() -> MicPermission { imp::status() }
+pub fn status() -> MicPermission {
+    imp::status()
+}
 
 /// Ask for the mic if needed. Resolves to the final granted state.
-pub async fn ensure() -> bool { imp::ensure().await }
+pub async fn ensure() -> bool {
+    imp::ensure().await
+}
 
 // ---------------------------------------------------------------- Android --
 #[cfg(target_os = "android")]
 mod imp {
     use super::MicPermission;
     use futures_timer::Delay;
-    use jni::objects::{JObject, JValue};
     use jni::JavaVM;
+    use jni::objects::{JObject, JValue};
     use std::time::Duration;
 
     const RECORD_AUDIO: &str = "android.permission.RECORD_AUDIO";
@@ -135,6 +139,10 @@ mod imp {
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod imp {
     use super::MicPermission;
-    pub fn status() -> MicPermission { MicPermission::Granted }
-    pub async fn ensure() -> bool { true }
+    pub fn status() -> MicPermission {
+        MicPermission::Granted
+    }
+    pub async fn ensure() -> bool {
+        true
+    }
 }

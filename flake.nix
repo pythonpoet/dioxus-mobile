@@ -73,17 +73,17 @@
                 description = "The database user for taalbubbl.";
               };
             };
-              ml_url = lib.mkOption {
-                type = lib.types.str;
-                default = "http://localhost:8000";
-                description = "url to locate ML api";
-              };
-
-
-            sessionExpiry = lib.mkOption {
-              type    = lib.types.str;
-              default = "3 weeks";
+            ml_url = lib.mkOption {
+              type = lib.types.str;
+              default = "http://localhost:8000";
+              description = "url to locate ML api";
             };
+
+          #   jwt_secret = lib.mkOption {
+          #     type = lib.types.str;
+          #     description = "JWT secret for authentication";
+          # }
+
 
             url = lib.mkOption {
               type    = lib.types.str;
@@ -128,7 +128,6 @@
                 DATABASE_URL            = "postgresql:///${cfg.database.name}?host=${cfg.database.host}";
                 DATABASE_MIGRATION_PATH = cfg.database.migrationPath;
                 DATABASE_TYPE           = cfg.database.type;
-                SESSION_EXPIRY          = cfg.sessionExpiry;
                 URL                     = cfg.url;
                 USE_HTTPS               = toString cfg.use_https;
                 ML_URL                  = cfg.ml_url;
@@ -164,9 +163,10 @@
             ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
               glib gtk3 libsoup_3 webkitgtk_4_1 xdotool
             ])
-            ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs.darwin.apple_sdk.frameworks; [
-              SystemConfiguration IOKit Carbon WebKit Security Cocoa
-            ]);
+            # Since nixpkgs 25.11 the target SDK is part of the darwin stdenv.
+            # Bring it in explicitly so desktop/mobile builds can link system
+            # frameworks (Cocoa, WebKit, Security, IOKit, …) by name.
+            ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.apple-sdk ];
 
           cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
           cargoLock  = builtins.fromTOML (builtins.readFile ./Cargo.lock);
@@ -176,6 +176,14 @@
 
           vendoredDeps = pkgs.rustPlatform.importCargoLock {
             lockFile = ./Cargo.lock;
+            # Cargo.lock pins three git workspaces (dioxus, dioxus-mobile, sdk).
+            # importCargoLock needs one output hash per git source — keyed by
+            # any `name-version` from that source, Nix maps it to the commit.
+            outputHashes = {
+              "const-serialize-0.8.0-alpha.1" = "sha256-E3E9JRmIxGqTmFE7baJCCqKn/2arBwX7ikn7IJEpk0A=";
+              "dioxus-jwt-0.1.0" = "sha256-MCOHL5bnS47ww4vGA9E8cDCmIzJH/aWFvMdCCp67AIg=";
+              "dioxus-sdk-storage-0.8.0" = "sha256-2Kud8YQiUVwI3DZq2QSJbw5oa2CvxSWtxzdCMSl5JmA=";
+            };
           };
 
           wasmBindgenVersion = (lib.findFirst
@@ -185,9 +193,9 @@
           ).version;
 
           wasmBindgenHashes = {
-            "0.2.121" = {
-              hash      = "sha256-ZOMgFNOcGkO66Jz/Z83eoIu+DIzo3Z/vq6Z5g6BDY/w=";
-              cargoHash = "sha256-DPdCDPTAPBrbqLUqnCwQu1dePs9lGg85JCJOCIr9qjU=";
+            "0.2.127" = {
+              hash      = "sha256-di+qBAdd7pENLiIB9CoZoab+W5xeDoByMREcCGTSzWo=";
+              cargoHash = "sha256-FTv2GZIAQs0ePdIZXIXil7JbZ6kIT05VG6vqC1qNFxQ=";
             };
           };
 
@@ -265,13 +273,13 @@
               export SQLX_OFFLINE=true
 
               mkdir -p .cargo
-              cat >> .cargo/config.toml << 'EOF'
-              [source.crates-io]
-              replace-with = "vendored-sources"
-
-              [source.vendored-sources]
-              directory = "${vendoredDeps}"
-              EOF
+              # importCargoLock already generated a full source-replacement
+              # config (crates-io + the three git workspaces). Reuse it, but
+              # point the vendored-sources directory at its store path — the
+              # relative "cargo-vendor-dir" only makes sense inside nixpkgs'
+              # own cargoSetupPostUnpackHook layout.
+              sed 's|^directory = "cargo-vendor-dir"$|directory = "${vendoredDeps}"|' \
+                "${vendoredDeps}/.cargo/config.toml" > .cargo/config.toml
               runHook postConfigure
             '';
 
@@ -314,19 +322,6 @@
               echo "  dx build --release --platform web  production build"
               echo "  just                               list available recipes"
               echo ""
-              # Force `cargo` and `rustc` to come from the Nix Rust toolchain
-                # and ensure rustup knows about them
-                export CARGO_HOME="${builtins.toString ./.cargo}"
-                mkdir -p "$CARGO_HOME"
-                cat > "$CARGO_HOME/config.toml" <<- 'EOF'
-                  [target.aarch64-linux-android]
-                  linker = "${pkgs.stdenv.cc.targetPrefix}cc"
-                EOF
-
-                # Use the Nix-provided rustup shim (if any) or override PATH
-                # Run `dx` with PATH pointing to the Nix rust toolchain first
-                echo "Rust toolchain: $(rustc --version)"
-                echo "Default target: $(rustc -vV | grep host)"
               zsh
             '';
           };
@@ -367,7 +362,7 @@
                 openssl
                 openssl.dev
                 pkg-config
-              ];
+              ] ++ rustBuildInputs;
 
               shellHook = ''
                 export ANDROID_SDK_ROOT="${androidSdk}/share/android-sdk"
@@ -392,26 +387,41 @@
                 zsh
               '';
             };
+
+          devShells.ios =
+            let
+              rustIosToolchain = pkgs.rust-bin.stable.latest.default.override {
+                extensions = [ "rust-src" "rust-analyzer" "clippy" ];
+                targets = [
+                  "wasm32-unknown-unknown"
+                  "aarch64-apple-ios"
+                  "aarch64-apple-ios-sim"
+                ];
+              };
+            in
+            pkgs.mkShell {
+              name = "dioxus-ios";
+
+              packages = with pkgs; [
+                rustIosToolchain
+                inputs.dioxus-cli.packages.${system}.default
+                just
+                openssl
+                openssl.dev
+                pkg-config
+              ] ++ rustBuildInputs;
+
+              shellHook = ''
+                export RUST_SRC_PATH="${rustIosToolchain}/lib/rustlib/src/rust/library"
+                echo ""
+                echo "Dioxus iOS dev shell"
+                echo "  dx serve --ios                          run in the iOS Simulator"
+                echo "  dx build --release --platform ios       production build"
+                echo "  cargo build --target aarch64-apple-ios-sim  simulator binary"
+                echo ""
+                zsh
+              '';
+            };
         };
     };
 }
-
-# ── Android physical device pairing ────────────────────────────────────────────
-#
-# USB (simplest):
-#   1. On device: Settings → Developer options → enable USB debugging
-#   2. Plug in USB cable
-#   3. Accept the "Allow USB debugging?" prompt on the device
-#   4. adb devices          (should list your device as "device", not "unauthorized")
-#
-# Wireless (Android 11+):
-#   1. On device: Settings → Developer options → Wireless debugging → Pair device with pairing code
-#   2. Note the IP:port and 6-digit code shown on screen
-#   3. adb pair <ip>:<port>          (enter the 6-digit code when prompted)
-#   4. adb connect <ip>:<port2>      (use the main wireless debugging port, not the pairing port)
-#   5. adb devices
-#
-# Useful commands:
-#   adb devices -l                   list connected devices with model info
-#   adb -s <serial> logcat           stream logs from a specific device
-#   adb reverse tcp:8080 tcp:8080    forward device requests to localhost (dev server)
