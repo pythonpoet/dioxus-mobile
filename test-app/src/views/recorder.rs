@@ -32,6 +32,39 @@ enum AudioCommand {
 }
 
 #[cfg(feature = "recorder")]
+/// Owns an optionally-open cpal audio stream.
+///
+/// Holding a stream keeps the audio device open; dropping it closes the
+/// device. `hold()` takes ownership of a stream so it stays alive, and
+/// `stop()` takes the stream out and drops it. Wrapping the slot in a named
+/// type makes that keep-alive/drop contract explicit at each call site and
+/// silences the `unused_assignments` lint that a bare
+/// `Option<cpal::Stream>` triggers (the lint only fires on locals, not on
+/// struct fields assigned inside methods).
+struct StreamSlot {
+    stream: Option<cpal::Stream>,
+}
+
+#[cfg(feature = "recorder")]
+impl StreamSlot {
+    fn empty() -> Self {
+        Self { stream: None }
+    }
+
+    /// Take ownership of `stream` so it stays alive (device stays open).
+    /// Replaces any stream currently held, dropping it first.
+    fn hold(&mut self, stream: cpal::Stream) {
+        self.stream = Some(stream);
+    }
+
+    /// Drop the held stream, if any, closing the audio device.
+    /// Does nothing when the slot is empty.
+    fn stop(&mut self) {
+        drop(self.stream.take());
+    }
+}
+
+#[cfg(feature = "recorder")]
 /// Helper function to safely locate the file in the OS sandbox.
 fn get_recording_path() -> PathBuf {
     let mut path = std::env::temp_dir();
@@ -74,8 +107,8 @@ pub fn Recorder() -> Element {
 
     // Central Multi-threaded Audio Manager Coroutine.
     let audio_task = use_coroutine(move |mut rx: UnboundedReceiver<AudioCommand>| async move {
-        let mut record_stream: Option<cpal::Stream> = None;
-        let mut playback_stream: Option<cpal::Stream> = None;
+        let mut record_stream = StreamSlot::empty();
+        let mut playback_stream = StreamSlot::empty();
         let mut recording_flag: Option<Arc<AtomicBool>> = None;
         let writer_mutex: Arc<Mutex<Option<WavWriter<BufWriter<File>>>>> = Arc::new(Mutex::new(None));
 
@@ -86,7 +119,7 @@ pub fn Recorder() -> Element {
                 // ==========================================
                 AudioCommand::StartRecord => {
                     // Explicitly stop any running playback first.
-                    playback_stream = None;
+                    playback_stream.stop();
 
                     let host = cpal::default_host();
                     let device = match host.default_input_device() {
@@ -172,14 +205,14 @@ pub fn Recorder() -> Element {
                     ).expect("Failed to initialize recording hardware");
 
                     new_stream.play().unwrap();
-                    record_stream = Some(new_stream);
+                    record_stream.hold(new_stream);
                 }
 
                 // ==========================================
                 // STOP RECORDING COMMAND
                 // ==========================================
                 AudioCommand::StopRecord => {
-                    record_stream = None;
+                    record_stream.stop();
                     if let Some(flag) = recording_flag.take() {
                         flag.store(false, Ordering::Relaxed);
                     }
@@ -192,7 +225,7 @@ pub fn Recorder() -> Element {
                 // ==========================================
                 AudioCommand::StartPlayback => {
                     // Stop ongoing recording stream to release hardware resources.
-                    record_stream = None;
+                    record_stream.stop();
 
                     let file_path = get_recording_path();
                     if let Ok(mut reader) = hound::WavReader::open(&file_path) {
@@ -229,7 +262,7 @@ pub fn Recorder() -> Element {
                             ).expect("Failed to build output stream");
 
                             new_playback_stream.play().unwrap();
-                            playback_stream = Some(new_playback_stream);
+                            playback_stream.hold(new_playback_stream);
                         }
                     } else {
                         eprintln!("Error: Could not open clean_recording.wav for playback.");
@@ -240,7 +273,7 @@ pub fn Recorder() -> Element {
                 // STOP PLAYBACK COMMAND
                 // ==========================================
                 AudioCommand::StopPlayback => {
-                    playback_stream = None;
+                    playback_stream.stop();
                 }
             }
         }

@@ -15,6 +15,10 @@ env:
   # Optional, but reduces target directory size a lot.
   CARGO_PROFILE_DEV_DEBUG: 0
   CARGO_PROFILE_RELEASE_DEBUG: 0
+  # sccache: content-addressed compile cache, survives Cargo.lock changes.
+  RUSTC_WRAPPER: sccache
+  SCCACHE_DIR: ${{ github.workspace }}/.sccache
+  SCCACHE_CACHE_SIZE: 5G
 
 jobs:
   build-ios:
@@ -42,18 +46,18 @@ jobs:
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Cache Cargo registry, git deps, and target directory
+      - name: Cache Cargo registry, git deps, and sccache
         uses: actions/cache@v4
         with:
           path: |
             .cargo-home/registry/index
             .cargo-home/registry/cache
             .cargo-home/git/db
-            target
-          key: v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-${{ hashFiles('Cargo.lock', 'flake.lock') }}
+            .sccache
+          key: v2-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-${{ hashFiles('flake.lock') }}
           restore-keys: |
-            v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-
-            v1-${{ runner.os }}-${{ runner.arch }}-ios-
+            v2-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-
+            v2-${{ runner.os }}-${{ runner.arch }}-ios-
 
       - name: Verify Cargo environment
         run: |
@@ -75,29 +79,41 @@ jobs:
           nix develop --accept-flake-config .#ios --command bash -lc '
             cargo fetch --locked
           '
-      - name: Build iOS binary
+      - name: Launch dx serve and Run Maestro Tests
         run: |
           nix develop --accept-flake-config .#ios --command bash -lc '
             set -euo pipefail
 
-            # 1. Point explicitly to full Xcode tools
             export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-
-            # 2. Prevent Nix CC wrappers from hijacking clang/swiftc sysroots
-            unset CC CXX
+            unset CC CXX SDKROOT
             export CC="/usr/bin/clang"
             export CXX="/usr/bin/clang++"
             export LD="/usr/bin/ld"
 
-            # 3. Unset global SDKROOT so swiftc/clang build host packages against MacOSX SDK
-            unset SDKROOT
-
-            # 4. Force aws-lc-sys to use CMake instead of cc-rs bindings
             export AWS_LC_SYS_CMAKE_BUILDER=1
             export AWS_LC_SYS_STATIC=1
 
+            export PATH="$HOME/.maestro/bin:$PATH"
+
+            # 1. Start `dx serve` in background so it launches simulator & keeps backend live
             cd test-app
-            dx build --platform ios --release
+            dx serve --platform ios &
+            DX_PID=$!
+            cd ..
+
+            # Automatically terminate `dx serve` background job when this step exits
+            trap "kill -9 $DX_PID 2>/dev/null || true" EXIT
+
+            # 2. Wait for `dx serve` to boot simulator and install the app
+            echo "Waiting for dx serve to start the simulator and install the app..."
+            until xcrun simctl listapps booted 2>/dev/null | grep -q "CFBundleIdentifier"; do
+              sleep 3
+            done
+
+            echo "Simulator booted and app installed successfully."
+
+            # 3. Run Maestro tests against the simulator launched by `dx serve`
+            maestro test .maestro/smoke.yaml
           '
 
       - name: Show target sizes

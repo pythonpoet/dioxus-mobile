@@ -268,6 +268,7 @@
               openssl
               openssl.dev
               pkg-config
+              sccache
               alsa-lib
             ] ++ rustBuildInputs;
 
@@ -292,6 +293,7 @@
                 openssl
                 openssl.dev
                 pkg-config
+                sccache
 
                 # Required build tools for C/C++ dependencies like aws-lc-sys
                 cmake
