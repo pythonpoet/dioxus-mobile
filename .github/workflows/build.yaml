@@ -75,15 +75,26 @@ jobs:
           nix develop --accept-flake-config .#ios --command bash -lc '
             cargo fetch --locked
           '
-
       - name: Build iOS binary
         run: |
           nix develop --accept-flake-config .#ios --command bash -lc '
             set -euo pipefail
 
-            # Point to full Xcode tools instead of Command Line Tools
+            # 1. Point explicitly to full Xcode tools
             export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-            export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+
+            # 2. Prevent Nix CC wrappers from hijacking clang/swiftc sysroots
+            unset CC CXX
+            export CC="/usr/bin/clang"
+            export CXX="/usr/bin/clang++"
+            export LD="/usr/bin/ld"
+
+            # 3. Unset global SDKROOT so swiftc/clang build host packages against MacOSX SDK
+            unset SDKROOT
+
+            # 4. Force aws-lc-sys to use CMake instead of cc-rs bindings
+            export AWS_LC_SYS_CMAKE_BUILDER=1
+            export AWS_LC_SYS_STATIC=1
 
             cd test-app
             dx build --platform ios --release

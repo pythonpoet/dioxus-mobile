@@ -295,18 +295,20 @@
 
                 # Required build tools for C/C++ dependencies like aws-lc-sys
                 cmake
-                gnumake
-                llvmPackages.clang
-                rustPlatform.bindgenHook
+                ninja
+                gnused
               ] ++ rustBuildInputs;
 
               shellHook = ''
                 export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
 
-                # Provide C compiler bindings for Rust custom build scripts
-                export CC=clang
-                export CXX=clang++
-                export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
+                # Prevent Nix Clang wrappers from overriding Apple SDKs
+                export CC="/usr/bin/clang"
+                export CXX="/usr/bin/clang++"
+
+                # Force aws-lc-sys build flags
+                export AWS_LC_SYS_STATIC=1
+                export AWS_LC_SYS_CMAKE_BUILDER=1
               '';
             };
         };
