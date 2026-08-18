@@ -2,7 +2,7 @@ name: Build iOS
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
 
 env:
   # Make Cargo use predictable locations inside the workspace.
