@@ -282,23 +282,33 @@
               LOCAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7; exit}')
             '';
           };
-
           devShells.ios = pkgs.mkShell {
-            name = "dioxus-ios";
+              name = "dioxus-ios";
 
-            packages = with pkgs; [
-              unifiedRustToolchain
-              inputs.dioxus-cli.packages.${system}.default
-              just
-              openssl
-              openssl.dev
-              pkg-config
-            ] ++ rustBuildInputs;
+              packages = with pkgs; [
+                unifiedRustToolchain
+                inputs.dioxus-cli.packages.${system}.default
+                just
+                openssl
+                openssl.dev
+                pkg-config
 
-            shellHook = ''
-              export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
-            '';
-          };
+                # Required build tools for C/C++ dependencies like aws-lc-sys
+                cmake
+                gnumake
+                llvmPackages.clang
+                rustPlatform.bindgenHook
+              ] ++ rustBuildInputs;
+
+              shellHook = ''
+                export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
+
+                # Provide C compiler bindings for Rust custom build scripts
+                export CC=clang
+                export CXX=clang++
+                export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
+              '';
+            };
         };
     };
 }
