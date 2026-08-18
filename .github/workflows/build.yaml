@@ -1,0 +1,109 @@
+name: Build iOS
+
+on:
+  push:
+    branches: [dev]
+
+env:
+  # Make Cargo use predictable locations inside the workspace.
+  CARGO_HOME: ${{ github.workspace }}/.cargo-home
+  CARGO_TARGET_DIR: ${{ github.workspace }}/target
+
+  # Better for CI caches.
+  CARGO_INCREMENTAL: 0
+
+  # Optional, but reduces target directory size a lot.
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_RELEASE_DEBUG: 0
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    permissions:
+          id-token: write
+          contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: DeterminateSystems/determinate-nix-action@v3
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+        with:
+          use-flakehub: disabled
+          use-gha-cache: enabled
+
+      - name: Get Rust version from Nix dev shell
+        id: rust
+        run: |
+          set -euo pipefail
+
+          VERSION=$(
+            nix develop --accept-flake-config .#ios --command rustc --version \
+              | awk '{print $2}'
+          )
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Cargo registry, git deps, and target directory
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargo-home/registry/index
+            .cargo-home/registry/cache
+            .cargo-home/git/db
+            target
+          key: v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-${{ hashFiles('Cargo.lock', 'flake.lock') }}
+          restore-keys: |
+            v1-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-
+            v1-${{ runner.os }}-${{ runner.arch }}-ios-
+
+      - name: Verify Cargo environment
+        run: |
+          nix develop --accept-flake-config .#ios --command bash -lc '
+            set -euxo pipefail
+
+            printenv CARGO_HOME || true
+            printenv CARGO_TARGET_DIR || true
+
+            cargo --version
+            rustc --version
+
+            dx --version || true
+          '
+
+      # Optional but useful: fail early if dependencies cannot be fetched.
+      - name: Fetch dependencies
+        run: |
+          nix develop --accept-flake-config .#ios --command bash -lc '
+            cargo fetch --locked
+          '
+
+      - name: Build iOS binary
+        run: |
+          nix develop --accept-flake-config .#ios --command bash -lc '
+            set -euo pipefail
+
+            # Point to full Xcode tools instead of Command Line Tools
+            export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+            export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+
+            cd test-app
+            dx build --platform ios --release
+          '
+
+      - name: Show target sizes
+        if: always()
+        run: |
+          du -sh target || true
+          du -sh target/* || true
+
+      - name: List build output
+        run: |
+          find target -name '*.framework' -o -name '*.app' | head -50
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-build
+          path: |
+            target/dx/
+            target/aarch64-apple-ios/release/
+          if-no-files-found: warn

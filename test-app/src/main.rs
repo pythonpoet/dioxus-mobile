@@ -1,46 +1,36 @@
-use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+//! Four-page test app for the dioxus-mobile workspace crates:
+//! dioxus-fcm, dioxus-jwt, dioxus-recorder.
+
+#![allow(non_snake_case)]
+
 use dioxus::prelude::*;
-use futures_util::StreamExt;
-use hound::{WavSpec, WavWriter};
-use nnnoiseless::DenoiseState;
-use ringbuf::{storage::Heap, traits::*, SharedRb};
-use std::fs::File;
-use std::io::BufWriter;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
 
-/// Commands routed to our background audio loop manager
-enum AudioCommand {
-    StartRecord,
-    StopRecord,
-    StartPlayback,
-    StopPlayback,
+mod views;
+use views::{Fcm, Init, Jwt, Recorder};
+
+/// Server URL used by native/mobile clients for server-function calls.
+/// On a device, replace with the host's LAN IP, e.g. `http://192.168.1.10:8080`.
+#[cfg(not(feature = "server"))]
+const SERVER_URL: &str = "http://127.0.0.1:8080";
+
+/// HS256 secret shared by the login server function and the auth-check decoder.
+/// Override at runtime with the `JWT_SECRET` environment variable.
+#[cfg(feature = "server")]
+const JWT_SECRET: &str = "dev-only-secret-change-me";
+
+/// Claims carried by our JWTs.
+#[cfg(feature = "server")]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+struct AuthClaims {
+    sub: String,
+    exp: u64,
 }
 
-fn main() {
-    // 1. Initialize Android Logging (Redirects Rust panics and logs cleanly to Logcat)
-    // #[cfg(target_os = "android")]
-    // {
-    //     android_logger::init_once(
-    //         android_logger::Config::default()
-    //             .with_tag("test-app")
-    //             .with_max_level(log::LevelFilter::Debug),
-    //     );
-
-    //     std::panic::set_hook(Box::new(|info| {
-    //         log::error!("Rust Runtime Panic: {}", info);
-    //     }));
-    // }
-
-    dioxus::launch(App);
-}
-
-/// Helper function to safely locate the file in the OS sandbox
-fn get_recording_path() -> PathBuf {
-    let mut path = std::env::temp_dir();
-    path.push("clean_recording.wav");
-    path
+/// Axum state exposing the JWT decoder to the auth-check route.
+#[cfg(feature = "server")]
+#[derive(Clone)]
+struct AuthState {
+    decoder: dioxus_jwt::Decoder<AuthClaims>,
 }
 
 pub fn App() -> Element {
@@ -198,345 +188,94 @@ pub fn App() -> Element {
                     std::thread::sleep(std::time::Duration::from_millis(150));
                 }
 
-                // ==========================================
-                // START PLAYBACK COMMAND
-                // ==========================================
-                AudioCommand::StartPlayback => {
-                    // Stop ongoing recording stream to release hardware resources
-                    record_stream = None;
-
-                    let file_path = get_recording_path();
-                    if let Ok(mut reader) = hound::WavReader::open(&file_path) {
-                        // Load all floats directly into RAM (avoids blocking disk I/O in cpal callback)
-                        let samples: Vec<f32> = reader.samples::<f32>().filter_map(Result::ok).collect();
-                        let samples = Arc::new(samples);
-                        let sample_index = Arc::new(AtomicUsize::new(0));
-
-                        let sample_index_clone = Arc::clone(&sample_index);
-                        let samples_clone = Arc::clone(&samples);
-
-                        let host = cpal::default_host();
-                        if let Some(device) = host.default_output_device() {
-                            let config = cpal::StreamConfig {
-                                channels: 1,
-                                sample_rate: cpal::SampleRate(48000),
-                                buffer_size: cpal::BufferSize::Default,
-                            };
-
-                            let new_playback_stream = device.build_output_stream(
-                                &config,
-                                move |data: &mut [f32], _: &_| {
-                                    for sample in data.iter_mut() {
-                                        let idx = sample_index_clone.fetch_add(1, Ordering::Relaxed);
-                                        if idx < samples_clone.len() {
-                                            *sample = samples_clone[idx];
-                                        } else {
-                                            *sample = 0.0; // Play silence if we reach EOF
-                                        }
-                                    }
-                                },
-                                |err| eprintln!("Playback stream hardware error: {}", err),
-                                None,
-                            ).expect("Failed to build output stream");
-
-                            new_playback_stream.play().unwrap();
-                            playback_stream = Some(new_playback_stream);
-                        }
-                    } else {
-                        eprintln!("Error: Could not open clean_recording.wav for playback.");
-                    }
-                }
-
-                // ==========================================
-                // STOP PLAYBACK COMMAND
-                // ==========================================
-                AudioCommand::StopPlayback => {
-                    playback_stream = None;
-                }
-            }
-        }
-    });
-
-    rsx! {
-        div {
-            style: "
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                min-height: 100vh;
-                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-                font-family: system-ui, -apple-system, sans-serif;
-                color: #f8fafc;
-                padding: 24px;
-            ",
-
-            // Dashboard Container
-            div {
-                style: "
-                    width: 100%;
-                    max-width: 440px;
-                    background: rgba(30, 41, 59, 0.7);
-                    backdrop-filter: blur(12px);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 24px;
-                    padding: 32px;
-                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-                ",
-
-                h2 {
-                    style: "
-                        font-size: 24px;
-                        font-weight: 800;
-                        text-align: center;
-                        margin-top: 0;
-                        margin-bottom: 24px;
-                        background: linear-gradient(90deg, #38bdf8, #818cf8);
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        letter-spacing: -0.5px;
-                    ",
-                    "Acoustics Lab"
-                }
-
-                // Info Dashboard Panel
-                div {
-                    style: "
-                        background: rgba(15, 23, 42, 0.6);
-                        border-radius: 16px;
-                        padding: 16px;
-                        margin-bottom: 24px;
-                        font-size: 14px;
-                        border: 1px solid rgba(255, 255, 255, 0.03);
-                    ",
-                    div {
-                        style: "display: flex; justify-content: space-between; margin-bottom: 8px;",
-                        span { style: "color: #94a3b8;", "Microphone Input:" }
-                        span {
-                            style: "font-weight: 600; color: #38bdf8;",
-                            "{mic_permission_state}"
-                        }
-                    }
-                    div {
-                        style: "display: flex; justify-content: space-between; margin-bottom: 8px;",
-                        span { style: "color: #94a3b8;", "File Location:" }
-                        span { style: "font-weight: 500; font-family: monospace; font-size: 12px;", "cache/clean_recording.wav" }
-                    }
-                    div {
-                        style: "display: flex; justify-content: space-between;",
-                        span { style: "color: #94a3b8;", "Recording Size:" }
-                        span {
-                            style: "font-weight: 600; color: #34d399;",
-                            "{file_info_str}"
-                        }
-                    }
-                }
-
-                // Central Control Panel Buttons
-                div {
-                    style: "display: flex; flex-direction: column; gap: 14px;",
-
-                    // 1. MIC PERMISSION INITIATOR
-                    button {
-                        style: "
-                            background: rgba(56, 189, 248, 0.1);
-                            color: #38bdf8;
-                            border: 1px solid rgba(56, 189, 248, 0.3);
-                            border-radius: 12px;
-                            padding: 12px 16px;
-                            font-size: 14px;
-                            font-weight: 600;
-                            cursor: pointer;
-                            transition: all 0.2s ease;
-                        ",
-                        onclick: move |_| async move {
-                            mic_permission_state.set("Requesting...".into());
-                            let granted = dioxus_recorder::ensure().await;
-                            mic_permission_state.set(if granted { "Granted".into() } else { "Denied".into() });
-                        },
-                        "Initialize Microphone Hardware"
-                    }
-
-                    // 2. RECORD / STOP RECORD BUTTON
-                    button {
-                        style: if is_recording() {
-                            "
-                                background: #ef4444;
-                                color: #ffffff;
-                                border: none;
-                                border-radius: 12px;
-                                padding: 14px 20px;
-                                font-size: 15px;
-                                font-weight: 700;
-                                cursor: pointer;
-                                transition: all 0.2s ease;
-                                box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-                            "
-                        } else {
-                            "
-                                background: #3b82f6;
-                                color: #ffffff;
-                                border: none;
-                                border-radius: 12px;
-                                padding: 14px 20px;
-                                font-size: 15px;
-                                font-weight: 700;
-                                cursor: pointer;
-                                transition: all 0.2s ease;
-                                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-                            "
-                        },
-                        onclick: move |_| {
-                            if is_recording() {
-                                audio_task.send(AudioCommand::StopRecord);
-                                is_recording.set(false);
-                                // Refresh recording file size
-                                refresh_file_metadata();
-                            } else {
-                                // If playing, shut down playback streams first
-                                if is_playing() {
-                                    audio_task.send(AudioCommand::StopPlayback);
-                                    is_playing.set(false);
-                                }
-                                audio_task.send(AudioCommand::StartRecord);
-                                is_recording.set(true);
-                            }
-                        },
-                        if is_recording() { "■  Stop Denoised Recording" } else { "●  Start Denoised Recording" }
-                    }
-
-                    // 3. PLAY / STOP PLAYBACK BUTTON
-                    button {
-                        style: if is_playing() {
-                            "
-                                background: #e2e8f0;
-                                color: #0f172a;
-                                border: none;
-                                border-radius: 12px;
-                                padding: 14px 20px;
-                                font-size: 15px;
-                                font-weight: 700;
-                                cursor: pointer;
-                                transition: all 0.2s ease;
-                                box-shadow: 0 4px 12px rgba(226, 232, 240, 0.2);
-                            "
-                        } else {
-                            "
-                                background: #10b981;
-                                color: #ffffff;
-                                border: none;
-                                border-radius: 12px;
-                                padding: 14px 20px;
-                                font-size: 15px;
-                                font-weight: 700;
-                                cursor: pointer;
-                                transition: all 0.2s ease;
-                                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-                            "
-                        },
-                        onclick: move |_| {
-                            if is_playing() {
-                                audio_task.send(AudioCommand::StopPlayback);
-                                is_playing.set(false);
-                            } else {
-                                // If recording, shut down recording stream first
-                                if is_recording() {
-                                    audio_task.send(AudioCommand::StopRecord);
-                                    is_recording.set(false);
-                                }
-                                audio_task.send(AudioCommand::StartPlayback);
-                                is_playing.set(true);
-                            }
-                        },
-                        if is_playing() { "■  Stop Local Playback" } else { "▶  Listen to Denoised Audio" }
-                    }
-                }
-            }
-
-            // Push Notifications Card
-            div {
-                style: "
-                    width: 100%;
-                    max-width: 440px;
-                    background: rgba(30, 41, 59, 0.7);
-                    backdrop-filter: blur(12px);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 24px;
-                    padding: 32px;
-                    margin-top: 20px;
-                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-                ",
-
-                h2 {
-                    style: "
-                        font-size: 24px;
-                        font-weight: 800;
-                        text-align: center;
-                        margin-top: 0;
-                        margin-bottom: 24px;
-                        background: linear-gradient(90deg, #38bdf8, #818cf8);
-                        -webkit-background-clip: text;
-                        -webkit-text-fill-color: transparent;
-                        letter-spacing: -0.5px;
-                    ",
-                    "Push Notifications"
-                }
-
-                div {
-                    style: "display: flex; flex-direction: column; gap: 14px;",
-
-                    button {
-                        style: "
-                            background: rgba(56, 189, 248, 0.1);
-                            color: #38bdf8;
-                            border: 1px solid rgba(56, 189, 248, 0.3);
-                            border-radius: 12px;
-                            padding: 12px 16px;
-                            font-size: 14px;
-                            font-weight: 600;
-                            cursor: pointer;
-                            transition: all 0.2s ease;
-                        ",
-                        onclick: move |_| async move {
-                            notif_permission.set(Some(dioxus_fcm::request_notification_permission().await));
-                        },
-                        "Request Notification Permission"
-                    }
-                    if let Some(granted) = notif_permission() {
-                        p { style: "margin: 0; font-size: 14px; color: #94a3b8;",
-                            if granted { "🔔 Granted" } else { "🚫 Denied" }
-                        }
-                    }
-
-                    button {
-                        style: "
-                            background: rgba(56, 189, 248, 0.1);
-                            color: #38bdf8;
-                            border: 1px solid rgba(56, 189, 248, 0.3);
-                            border-radius: 12px;
-                            padding: 12px 16px;
-                            font-size: 14px;
-                            font-weight: 600;
-                            cursor: pointer;
-                            transition: all 0.2s ease;
-                        ",
-                        onclick: move |_| async move {
-                            fcm_token.set(dioxus_fcm::request_token().await);
-                        },
-                        "Get FCM Token"
-                    }
-                    if let Some(t) = fcm_token() {
-                        p {
-                            style: "margin: 0; font-size: 12px; font-family: monospace; color: #34d399; word-break: break-all;",
-                            "{t}"
-                        }
-                    }
-                }
-            }
-        }
+/// Bare-bones login server function: fixed credentials, no database.
+#[post("/api/login")]
+pub async fn login(username: String, password: String) -> ServerFnResult<String> {
+    if username == "admin" && password == "password" {
+        let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| JWT_SECRET.to_string());
+        let claims = AuthClaims {
+            sub: username,
+            exp: now_unix() + 86_400, // 24h
+        };
+        dioxus_jwt::issue_hs256(&secret, &claims)
+            .ok_or_else(|| ServerFnError::new("failed to sign token"))
+    } else {
+        Err(ServerFnError::new("invalid credentials"))
     }
 }
 
-fn tragedies_happen(err: cpal::StreamError) {
-    eprintln!("Audio input device dropped unexpectedly: {}", err);
+/// Server-side check: validate the bearer token against the decoder.
+#[cfg(feature = "server")]
+async fn auth_check(claims: dioxus_jwt::Claims<AuthClaims>) -> String {
+    format!("authenticated as {}", claims.claims.sub)
+}
+
+/// Current unix time in seconds, matching the JWT `exp` claim format.
+#[cfg(feature = "server")]
+fn now_unix() -> u64 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+#[derive(Clone, Routable, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[rustfmt::skip]
+enum Route {
+    #[layout(Layout)]
+        #[route("/")]
+        Init {},
+
+        #[route("/fcm")]
+        Fcm {},
+
+        #[route("/jwt")]
+        Jwt {},
+
+        #[route("/recorder")]
+        Recorder {},
+}
+
+#[component]
+fn Layout() -> Element {
+    rsx! {
+        nav {
+            style: "display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 16px; background: #0f172a; border-bottom: 1px solid rgba(255,255,255,0.08);",
+            Link { to: Route::Init {}, style: "color: #93c5fd; text-decoration: none; padding: 6px 10px; border-radius: 8px;", "Init" }
+            Link { to: Route::Fcm {}, style: "color: #93c5fd; text-decoration: none; padding: 6px 10px; border-radius: 8px;", "FCM" }
+            Link { to: Route::Jwt {}, style: "color: #93c5fd; text-decoration: none; padding: 6px 10px; border-radius: 8px;", "JWT" }
+            Link { to: Route::Recorder {}, style: "color: #93c5fd; text-decoration: none; padding: 6px 10px; border-radius: 8px;", "Recorder" }
+        }
+        Outlet::<Route> {}
+    }
+}
+
+fn App() -> Element {
+    let _auth = dioxus_jwt::init();
+    rsx! { Router::<Route> {} }
+}
+
+fn main() {
+    #[cfg(not(feature = "server"))]
+    dioxus::fullstack::set_server_url(SERVER_URL);
+
+    #[cfg(not(feature = "server"))]
+    dioxus::launch(App);
+
+    #[cfg(feature = "server")]
+    dioxus::serve(|| async move {
+        use dioxus::server::axum::routing::get;
+        use dioxus::server::axum::Router;
+
+        let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| JWT_SECRET.to_string());
+        let decoder = dioxus_jwt::hs256_decoder::<AuthClaims>(&secret, Some(&["test-app"]));
+        let auth_state = AuthState { decoder };
+
+        let auth_router = Router::new()
+            .route("/api/check", get(auth_check))
+            .with_state(auth_state);
+
+        Ok(dioxus::server::router(App).merge(auth_router))
+    });
 }
