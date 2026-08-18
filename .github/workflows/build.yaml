@@ -78,7 +78,7 @@ jobs:
 
       - name: Build iOS binary
         run: |
-          nix develop --accept-flake-config .#ios --command cd test-app && dx build --platform ios --release
+          nix develop --accept-flake-config .#ios --command sh -c "cd test-app && dx build --platform ios --release"
 
       - name: Show target sizes
         if: always()
