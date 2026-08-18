@@ -79,6 +79,13 @@ jobs:
           nix develop --accept-flake-config .#ios --command bash -lc '
             cargo fetch --locked
           '
+
+      - name: Install Maestro CLI
+        run: |
+          set -euo pipefail
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
       - name: Launch dx serve and Run Maestro Tests
         run: |
           nix develop --accept-flake-config .#ios --command bash -lc '
