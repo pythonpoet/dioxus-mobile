@@ -1,5 +1,8 @@
 /target
 
+# Swift Package Manager build output for the iOS plugin.
+/src/ios/plugin/.build/
+
 # Real Firebase config, copied here at build time by build.rs from either
 # <app>/ios/GoogleService-Info.plist or GoogleService-Info.example.plist. Never
 # commit the real file — it's per-app and per-Firebase-project.
