@@ -8,6 +8,12 @@
 [android]
 custom_manifest = "android/AndroidManifest.xml"
 
+[ios]
+deployment_target = "14.0"
+
+[ios.entitlements]
+aps-environment = "development"
+
 [web.app]
 
 # HTML title tag content

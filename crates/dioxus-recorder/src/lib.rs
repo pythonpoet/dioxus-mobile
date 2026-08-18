@@ -106,7 +106,7 @@ mod imp {
 
     pub fn status() -> MicPermission {
         // extern static; `unsafe` may be unnecessary depending on objc2 version
-        let media_type = unsafe { &AVMediaTypeAudio };
+        let media_type = unsafe { AVMediaTypeAudio }.expect("AVMediaTypeAudio unavailable");
         match unsafe { AVCaptureDevice::authorizationStatusForMediaType(media_type) } {
             AVAuthorizationStatus::Authorized => MicPermission::Granted,
             AVAuthorizationStatus::NotDetermined => MicPermission::NotDetermined,
@@ -125,7 +125,7 @@ mod imp {
                 let _ = tx.send(granted.as_bool());
             }
         });
-        let media_type = unsafe { &AVMediaTypeAudio };
+        let media_type = unsafe { AVMediaTypeAudio }.expect("AVMediaTypeAudio unavailable");
         // Shows the system prompt the first time; if the user already decided,
         // the handler fires immediately with the stored status (no dialog).
         unsafe {

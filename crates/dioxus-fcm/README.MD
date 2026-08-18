@@ -1,6 +1,7 @@
 # Dioxus FCM
 
-A Firebase Cloud Messaging (FCM) crate for Dioxus mobile apps. The project is at an early stage — only Android is supported at the moment.
+A Firebase Cloud Messaging (FCM) crate for Dioxus mobile apps. Android and iOS are both
+supported; the project is still early-stage — do not use it in production.
 
 For more information about FCM, visit: https://firebase.google.com/docs/cloud-messaging/
 
@@ -46,12 +47,41 @@ For more information about FCM, visit: https://firebase.google.com/docs/cloud-me
 > Firebase dependencies in your Android build. See `test-app` for a working
 > configuration.
 
-### Future iOS support (not implemented yet)
+### iOS setup
 
-1. Add an iOS app to your Firebase project → download `GoogleService-Info.plist`.
-2. Upload your APNs key:
-   - Go to Apple Developer → create an APNs Auth Key (.p8)
-   - Upload it in Firebase Console → Project Settings → Cloud Messaging → APNs
+The iOS bridge (`src/ios/plugin`) is a Swift Package bound to Rust via
+`#[manganis::ffi]` — `dx build --ios` compiles and links it into the app bundle
+automatically. There's no Xcode project to hand-edit, but you do need a few things
+from your Apple/Firebase accounts before push actually works:
+
+1. Add an iOS app to your Firebase project (Firebase Console → Project settings →
+   your apps → Add app → iOS). Use the same bundle identifier as `[bundle] identifier`
+   / `[ios] identifier` in your app's `Dioxus.toml`.
+2. Download the generated `GoogleService-Info.plist` and replace the placeholder at
+   `crates/dioxus-fcm/src/ios/plugin/Sources/Resources/GoogleService-Info.plist` with
+   it. (The placeholder has `GOOGLE_APP_ID = "REPLACE_ME"` — `init_fcm()` detects that
+   and logs a warning instead of configuring Firebase, so the app doesn't crash if you
+   forget this step, but `request_token()` will always return `None`.)
+3. Create an APNs Auth Key (.p8) in your Apple Developer account (Certificates,
+   Identifiers & Profiles → Keys) and upload it in Firebase Console → Project
+   Settings → Cloud Messaging → Apple app configuration → APNs Authentication Key.
+4. Enable the **Push Notifications** capability for your App ID in the Apple
+   Developer portal, and make sure your provisioning profile / entitlements include
+   it — add this to your app's `Dioxus.toml`:
+
+   ```toml
+   [ios]
+   deployment_target = "14.0"
+
+   [ios.entitlements]
+   aps-environment = "development"  # "production" for a TestFlight/App Store build
+   ```
+
+5. Add `dioxus-fcm` to your `Cargo.toml`.
+
+The first `dx build --ios` will fetch and compile the Firebase iOS SDK via Swift
+Package Manager, which is slow (network + a large Swift build) — subsequent builds
+are cached.
 
 ## Usage
 
@@ -114,9 +144,17 @@ use_future(move || async move {
 });
 ```
 
+## iOS limitations
+
+Unlike Android's JNI bridge (which calls back into Rust unprompted whenever Firebase
+rotates a token), the iOS Swift plugin only *caches* a rotated token internally — it has
+no way to push an unsolicited `TokenEvent::NewToken` into Rust. On iOS, `events()` will
+only ever emit what you already knew from a `request_token()` call. If you need to notice
+a rotated token, call `request_token()` again (e.g. on app foreground) rather than relying
+on the event channel.
+
 ## Disclaimer
 
 This is a work-in-progress project — do not use it in production.
 
-In the future, iOS might also be supported, and there may be an icon
-generator for push notification icons.
+There may eventually be an icon generator for push notification icons.
