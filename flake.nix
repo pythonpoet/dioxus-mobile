@@ -1,4 +1,19 @@
 {
+  # ── Binary Cache Configuration ─────────────────────────────────────────────
+    nixConfig = {
+      extra-substituters = [
+        "https://cache.nixos.org"
+        "https://nix-community.cachix.org"
+        # Add your own cache here, e.g.:
+        # "https://your-cache-name.cachix.org"
+      ];
+      extra-trusted-public-keys = [
+        "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+        "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+        # Add your cache public key here, e.g.:
+        # "your-cache-name.cachix.org-1:your-public-key-here"
+      ];
+    };
   inputs = {
     nixpkgs.url          = "github:nixos/nixpkgs/master";
     flake-parts.url      = "github:hercules-ci/flake-parts";
