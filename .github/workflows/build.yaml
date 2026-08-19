@@ -82,7 +82,7 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
           export MAESTRO_CLI_NO_ANALYTICS=1
 
-      - name: Launch dx serve and Run Maestro Tests
+      - name: Build iOS app and Run Maestro Tests
         run: |
           nix develop --accept-flake-config .#ios --command bash << 'EOF'
             set -euo pipefail
@@ -96,41 +96,34 @@ jobs:
             export AWS_LC_SYS_CMAKE_BUILDER=1
             export AWS_LC_SYS_STATIC=1
             export PATH="$HOME/.maestro/bin:$PATH"
+            export MAESTRO_CLI_NO_ANALYTICS=1
 
-            # 2. Start `dx serve`
+            # 1. One-shot build. `dx build` exits when the build finishes
+            #    (deterministic pass/fail), unlike `dx serve`, which stays
+            #    alive and only starts building after printing its banner.
             cd test-app
-            dx serve --platform ios > ../dx_serve.log 2>&1 &
-            DX_PID=$!
+            dx build --platform ios --release
             cd ..
 
-            trap "kill -9 $DX_PID 2>/dev/null || true" EXIT
+            APP="target/dx/test-app/release/ios/TestApp.app"
+            if [ ! -d "$APP" ]; then
+              echo "ERROR: expected app bundle not found: $APP"
+              find target/dx/test-app -maxdepth 4 -name '*.app' -print
+              exit 1
+            fi
 
-            echo "Waiting for Dioxus build, backend server, and iOS simulator..."
+            # 2. Boot a simulator and block until it is fully booted.
+            UDID="$(xcrun simctl list devices available | grep -m1 -Eo '\([0-9A-F-]{36}\)' | tr -d '()')"
+            [ -n "$UDID" ] || { echo "ERROR: no available iOS simulator device"; exit 1; }
+            echo "Booting simulator: $UDID"
+            xcrun simctl boot "$UDID" 2>/dev/null || true
+            xcrun simctl bootstatus "$UDID" -b
+            open -a Simulator || true
 
-            # 3. Wait loop
-            MAX_ATTEMPTS=120
-            ATTEMPT=0
+            # 3. Install the freshly built app bundle.
+            xcrun simctl install "$UDID" "$APP"
 
-            until xcrun simctl listapps booted 2>/dev/null | grep -q "com.example.TestApp"; do
-              if ! kill -0 "$DX_PID" 2>/dev/null; then
-                echo "ERROR: 'dx serve' process died unexpectedly. Output log:"
-                cat dx_serve.log
-                exit 1
-              fi
-
-              ATTEMPT=$((ATTEMPT + 1))
-              if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
-                echo "ERROR: Timed out waiting for app installation. Output log:"
-                cat dx_serve.log
-                exit 1
-              fi
-
-              sleep 3
-            done
-
-            echo "Simulator booted and com.example.TestApp installed successfully!"
-
-            # 4. Run tests
+            # 4. Run the Maestro smoke test.
             maestro test .maestro/smoke.yaml
           EOF
 
@@ -150,5 +143,5 @@ jobs:
           name: iOS-build
           path: |
             target/dx/
-            target/aarch64-apple-ios/release/
+            target/aarch64-apple-ios-sim/release/
           if-no-files-found: warn
