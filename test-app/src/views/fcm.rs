@@ -5,14 +5,14 @@ use super::{BTN, CARD, PAGE_STYLE};
 /// FCM test page: notification permission and token fetch.
 #[component]
 pub fn Fcm() -> Element {
-    let mut kotlin = use_signal(|| None::<String>);
+    let mut test_interface = use_signal(|| None::<String>);
     let mut permission = use_signal(|| None::<bool>);
     let mut token = use_signal(|| None::<String>);
 
     // Initialize Firebase once and probe the Kotlin bridge (Android only).
     use_effect(move || {
         dioxus_fcm::init_fcm();
-        kotlin.set(dioxus_fcm::kotlin_available());
+        test_interface.set(dioxus_fcm::test_interface());
     });
 
     rsx! {
@@ -20,10 +20,10 @@ pub fn Fcm() -> Element {
             h1 { "dioxus-fcm" }
 
             div { style: CARD,
-                if let Some(k) = kotlin() {
-                    p { "Kotlin bridge: {k}" }
+                if let Some(k) = test_interface() {
+                    p { "Native bridge: {k}" }
                 } else {
-                    p { "Kotlin bridge: unavailable on this platform" }
+                    p { "Native bridge: unavailable on this platform" }
                 }
             }
 

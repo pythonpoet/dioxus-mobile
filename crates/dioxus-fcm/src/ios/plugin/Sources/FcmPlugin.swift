@@ -26,8 +26,9 @@ public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDel
         super.init()
     }
 
-    /// Load `GoogleService-Info.plist` bundled inside this Swift package (see
-    /// `Sources/Resources/`) and configure Firebase from it. Safe to call more than once.
+    /// Load `GoogleService-Info.plist` from the main app bundle and configure Firebase from
+    /// it. The plist comes from the consuming app's `<app>/ios/GoogleService-Info.plist`, not
+    /// from a copy bundled inside this Swift package. Safe to call more than once.
     @objc public func nativeConfigure() {
         stateLock.lock()
         let alreadyConfigured = configured
@@ -50,17 +51,16 @@ public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDel
     }
 
     private func loadFirebaseOptions() -> FirebaseOptions? {
-        // `.copy("Resources")` in Package.swift may either flatten the file to the bundle
-        // root or preserve the "Resources/" subpath depending on the SwiftPM toolchain —
-        // try both so this keeps working across versions.
-        let plistURL = Bundle.module.url(
-            forResource: "GoogleService-Info", withExtension: "plist", subdirectory: "Resources"
-        ) ?? Bundle.module.url(forResource: "GoogleService-Info", withExtension: "plist")
-
-        guard let plistURL, let options = FirebaseOptions(contentsOfFile: plistURL.path) else {
+        // Firebase expects the plist in the *app* bundle, not the Swift package bundle:
+        // dx installs the FcmPlugin dylib without its SwiftPM resources, so `Bundle.module`
+        // is empty at runtime. The consuming app's `<app>/ios/GoogleService-Info.plist` is the
+        // authoritative source and belongs at the main bundle root.
+        guard let plistURL = Bundle.main.url(
+            forResource: "GoogleService-Info", withExtension: "plist"
+        ), let options = FirebaseOptions(contentsOfFile: plistURL.path) else {
             NSLog(
-                "dioxus-fcm: GoogleService-Info.plist not found in the FcmPlugin package "
-                    + "(crates/dioxus-fcm/src/ios/plugin/Sources/Resources/) — Firebase not configured"
+                "dioxus-fcm: GoogleService-Info.plist not found in the app bundle "
+                    + "(<app>/ios/GoogleService-Info.plist) — Firebase not configured"
             )
             return nil
         }
@@ -69,12 +69,19 @@ public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDel
             NSLog(
                 "dioxus-fcm: GoogleService-Info.plist is still the placeholder — download the "
                     + "real file from the Firebase console (Project settings → your iOS app) and "
-                    + "replace crates/dioxus-fcm/src/ios/plugin/Sources/Resources/GoogleService-Info.plist"
+                    + "place it at <app>/ios/GoogleService-Info.plist"
             )
             return nil
         }
 
         return options
+    }
+
+    // MARK: Probe
+
+    /// Confirm the Swift bridge is reachable from Rust. Returns "switft inshallah".
+    @objc public func nativeTestInterface() -> String {
+        return "switft inshallah"
     }
 
     // MARK: MessagingDelegate

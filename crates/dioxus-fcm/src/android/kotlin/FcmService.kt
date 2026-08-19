@@ -28,7 +28,7 @@ class FcmService : FirebaseMessagingService() {
         private const val REQUEST_CODE = 1001
 
         @JvmStatic
-        fun kotlinAvailable(): String = "inshallah"
+        fun test_interface(): String = "inshallah kotlin"
 
         @JvmStatic
         fun requestToken(context: Context) {

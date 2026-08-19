@@ -247,7 +247,7 @@ fn fire_request_token() {
 }
 
 //// Probe: ask the Kotlin side if it's reachable. Should return "inshallah".
-pub fn kotlin_available() -> Option<String> {
+pub fn test_interface() -> Option<String> {
     let ctx = ndk_context::android_context();
     let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.unwrap();
     let mut env = vm.attach_current_thread().unwrap();

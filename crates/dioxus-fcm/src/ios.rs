@@ -5,8 +5,8 @@
 //! compiles that package into a dynamic framework, and links it into the app bundle
 //! automatically at `dx build --ios` time — there's no Xcode project to hand-edit.
 //!
-//! Firebase needs `GoogleService-Info.plist`; see
-//! `src/ios/plugin/Sources/Resources/GoogleService-Info.plist` for where that goes.
+//! Firebase needs `GoogleService-Info.plist`; the consuming app provides it at
+//! `<app>/ios/GoogleService-Info.plist` (loaded from the main app bundle at runtime).
 
 use once_cell::sync::Lazy;
 
@@ -29,6 +29,8 @@ unsafe extern "Swift" {
     /// Fetch the FCM token; blocks until Firebase delivers it (or times out).
     /// Empty string means "no token" (Firebase not configured, or timeout/error).
     pub fn native_request_token(this: &FcmPlugin) -> String;
+    /// Probe: is the Swift side reachable? Returns "switft inshallah" on success.
+    pub fn native_test_interface(this: &FcmPlugin) -> String;
 }
 
 /// One retained plugin instance for the process lifetime. `Messaging.delegate` and
@@ -63,4 +65,10 @@ pub async fn request_token() -> Option<String> {
         .await
         .unwrap_or_default();
     if token.is_empty() { None } else { Some(token) }
+}
+
+/// Probe: is the Swift side reachable? Should return "switft inshallah".
+pub fn test_interface() -> Option<String> {
+    let msg = native_test_interface(&*PLUGIN).unwrap_or_default();
+    if msg.is_empty() { None } else { Some(msg) }
 }

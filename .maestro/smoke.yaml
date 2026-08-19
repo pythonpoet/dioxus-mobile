@@ -25,7 +25,7 @@ name: iOS boot + navigation smoke
 - tapOn:
     text: "FCM"
     index: 0
-- assertVisible: ".*Kotlin bridge:.*"
+- assertVisible: ".*Native bridge: switft inshallah"
 # Automatically tap "Allow" if the iOS system alert appears
 
 - tapOn:

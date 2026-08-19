@@ -102,11 +102,16 @@ pub fn init_fcm() {}
 
 /// Probe: is the Kotlin side reachable? Android-only by nature.
 #[cfg(target_os = "android")]
-pub fn kotlin_available() -> Option<String> {
-    android::kotlin_available()
+pub fn test_interface() -> Option<String> {
+    android::test_interface()
+}
+/// Probe: is the Swift side reachable? iOS-only by nature.
+#[cfg(target_os = "ios")]
+pub fn test_interface() -> Option<String> {
+    ios::test_interface()
 }
 
-#[cfg(not(target_os = "android"))]
-pub fn kotlin_available() -> Option<String> {
-    None // there's no Kotlin on iOS/desktop — None is honest here
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub fn test_interface() -> Option<String> {
+    None // no native bridge on desktop — None is honest here
 }
