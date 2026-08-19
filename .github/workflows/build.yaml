@@ -87,9 +87,11 @@ jobs:
           nix develop --accept-flake-config .#ios --command bash << 'EOF'
             set -euo pipefail
 
-            # 1. Configure SDK environment
-            export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-            export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
+            # SDK toolchain (real Xcode via the `xcrun` PATH shim) and iOS
+            # linker selection are configured by the `.#ios` dev shell hook.
+            # Do NOT export DEVELOPER_DIR/SDKROOT here: the Nix `cc` wrapper
+            # would then point host linking at Xcode's macOS SDK and break the
+            # build with `linking with cc failed`.
 
             export AWS_LC_SYS_CMAKE_BUILDER=1
             export AWS_LC_SYS_STATIC=1

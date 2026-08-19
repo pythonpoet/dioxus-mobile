@@ -299,15 +299,35 @@
             shellHook = ''
               export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
 
-              # Locate Developer dir and simulator SDK if running on macOS
-              if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
-                export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-                export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null || true)"
-              fi
-
               # Force aws-lc-sys build flags
               export AWS_LC_SYS_STATIC=1
               export AWS_LC_SYS_CMAKE_BUILDER=1
+
+              # The Nix toolchain ships its own macOS SDK plus an `xcrun` (from
+              # xcbuild) that only knows that SDK. Dioxus' iOS build needs the
+              # *real* Xcode toolchain (iPhoneSimulator/iPhoneOS SDKs, swift,
+              # simctl), so when Xcode is present:
+              #   1. route `xcrun` to the system binary via a PATH shim, and
+              #   2. use the real Xcode clang as the linker for the iOS Rust
+              #      targets (the Nix clang has no iPhoneOS SDK to link against).
+              # Do NOT export DEVELOPER_DIR/SDKROOT here: the Nix `cc` wrapper
+              # derives its sysroot from DEVELOPER_DIR and would point host
+              # linking (build scripts, the darwin server) at Xcode's macOS SDK,
+              # which breaks with `linking with cc failed`.
+              if [ -x /usr/bin/xcrun ]; then
+                shimdir="$(mktemp -d)"
+                printf '%s\n' '#!/usr/bin/env bash' 'exec /usr/bin/xcrun "$@"' > "$shimdir/xcrun"
+                chmod +x "$shimdir/xcrun"
+                export PATH="$shimdir:$PATH"
+
+                for spec in "AARCH64_APPLE_IOS:iphoneos" "AARCH64_APPLE_IOS_SIM:iphonesimulator"; do
+                  sdk="''${spec##*:}"
+                  clang="$(/usr/bin/xcrun --sdk "$sdk" --find clang 2>/dev/null || true)"
+                  if [ -n "$clang" ]; then
+                    export "CARGO_TARGET_''${spec%%:*}_LINKER=$clang"
+                  fi
+                done
+              fi
             '';
           };
         };
