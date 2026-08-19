@@ -9,10 +9,9 @@
 custom_manifest = "android/AndroidManifest.xml"
 
 [ios]
-deployment_target = "16.0"
-background_modes = ["audio"]
+deployment_target = "14.0"
 
-[ios.info_plist]
+[ios.info_plist_keys]
 NSMicrophoneUsageDescription = "Record audio for pronunciation checker"
 
 [ios.entitlements]
