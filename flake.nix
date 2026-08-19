@@ -310,19 +310,22 @@
               #   1. route `xcrun` to the system binary via a PATH shim, and
               #   2. use the real Xcode clang as the linker for the iOS Rust
               #      targets (the Nix clang has no iPhoneOS SDK to link against).
-              # Do NOT export DEVELOPER_DIR/SDKROOT here: the Nix `cc` wrapper
-              # derives its sysroot from DEVELOPER_DIR and would point host
-              # linking (build scripts, the darwin server) at Xcode's macOS SDK,
-              # which breaks with `linking with cc failed`.
+              # The apple-sdk setup hook already exports DEVELOPER_DIR/SDKROOT
+              # to the *Nix* SDK; keep them for host linking (the Nix `cc`
+              # wrapper derives its sysroot from DEVELOPER_DIR), but strip them
+              # inside the `xcrun` shim so the real Xcode tools resolve SDKs
+              # against `xcode-select`. The Nix developer dir has no iOS
+              # platforms, so without this `xcrun --show-sdk-path --sdk
+              # iphonesimulator` fails with exit 255.
               if [ -x /usr/bin/xcrun ]; then
                 shimdir="$(mktemp -d)"
-                printf '%s\n' '#!/usr/bin/env bash' 'exec /usr/bin/xcrun "$@"' > "$shimdir/xcrun"
+                printf '%s\n' '#!/usr/bin/env bash' 'unset DEVELOPER_DIR SDKROOT' 'exec /usr/bin/xcrun "$@"' > "$shimdir/xcrun"
                 chmod +x "$shimdir/xcrun"
                 export PATH="$shimdir:$PATH"
 
                 for spec in "AARCH64_APPLE_IOS:iphoneos" "AARCH64_APPLE_IOS_SIM:iphonesimulator"; do
                   sdk="''${spec##*:}"
-                  clang="$(/usr/bin/xcrun --sdk "$sdk" --find clang 2>/dev/null || true)"
+                  clang="$("$shimdir/xcrun" --sdk "$sdk" --find clang 2>/dev/null || true)"
                   if [ -n "$clang" ]; then
                     export "CARGO_TARGET_''${spec%%:*}_LINKER=$clang"
                   fi
