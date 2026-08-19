@@ -87,18 +87,14 @@ jobs:
           nix develop --accept-flake-config .#ios --command bash << 'EOF'
             set -euo pipefail
 
-            # Use the real Xcode toolchain, not the Nix clang wrappers/SDK.
-            # The Nix `cc` wrapper cannot cross-link iOS targets, and the Nix
-            # xcbuild `xcrun` has no iPhoneSimulator platform. Pointing
-            # DEVELOPER_DIR at real Xcode makes `xcrun --show-sdk-path --sdk
-            # iphonesimulator` (cc-rs SDK lookup) and `xcrun simctl` resolve,
-            # while CC/CXX/LD override the Nix wrappers for the build itself.
-
-            export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-            unset CC CXX SDKROOT
-            export CC="/usr/bin/clang"
-            export CXX="/usr/bin/clang++"
-            export LD="/usr/bin/ld"
+            # Toolchain selection is handled by the `.#ios` shell hook:
+            #   * host build scripts/proc-macros keep the Nix `cc` wrapper with
+            #     the Nix macOS SDK (DEVELOPER_DIR/SDKROOT are left untouched),
+            #     and
+            #   * iOS targets use real Xcode clang via target-scoped
+            #     CC_*/CARGO_TARGET_*_LINKER vars plus the `xcrun` PATH shim.
+            # Do NOT set DEVELOPER_DIR here: the Nix `cc` wrapper reads it for
+            # host linking and conflicts with its baked-in Nix SDK value.
 
             export AWS_LC_SYS_CMAKE_BUILDER=1
             export AWS_LC_SYS_STATIC=1
