@@ -92,18 +92,21 @@ jobs:
           nix develop --accept-flake-config .#ios --command bash << 'EOF'
             set -euo pipefail
 
-            # 1. Properly set Developer Dir and SDK Path (Do NOT unset CC/CXX manually)
+            # 1. Properly set Developer Dir and SDK Path
             export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
             export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
 
-            # Disable sccache wrapper if linker issues persist, or clear sccache
-            sccache --clear || true
+            # 2. Safely purge sccache disk cache without invalid flags
+            sccache --stop-server 2>/dev/null || true
+            if [ -d "${SCCACHE_DIR:-}" ]; then
+              rm -rf "${SCCACHE_DIR:?}"/*
+            fi
 
             export AWS_LC_SYS_CMAKE_BUILDER=1
             export AWS_LC_SYS_STATIC=1
             export PATH="$HOME/.maestro/bin:$PATH"
 
-            # 2. Start `dx serve` and redirect output to a log file
+            # 3. Start `dx serve` and redirect output to a log file
             cd test-app
             dx serve --platform ios > ../dx_serve.log 2>&1 &
             DX_PID=$!
@@ -114,7 +117,7 @@ jobs:
 
             echo "Waiting for Dioxus build, backend server, and iOS simulator..."
 
-            # 3. Wait loop with health checks & process liveness
+            # 4. Wait loop with health checks & process liveness
             MAX_ATTEMPTS=120 # 6 minutes max wait time
             ATTEMPT=0
 
@@ -138,12 +141,12 @@ jobs:
 
             echo "Simulator booted and com.example.TestApp installed successfully!"
 
-            # 4. Stream server logs in background during test run for debugging
+            # 5. Stream server logs in background during test run for debugging
             tail -f dx_serve.log &
             TAIL_PID=$!
             trap "kill -9 $DX_PID $TAIL_PID 2>/dev/null || true" EXIT
 
-            # 5. Run Maestro tests
+            # 6. Run Maestro tests
             maestro test .maestro/smoke.yaml
           EOF
       - name: Show target sizes
