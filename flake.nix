@@ -299,38 +299,13 @@
             shellHook = ''
               export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
 
+              # Prevent Nix Clang wrappers from overriding Apple SDKs
+              export CC="/usr/bin/clang"
+              export CXX="/usr/bin/clang++"
+
               # Force aws-lc-sys build flags
               export AWS_LC_SYS_STATIC=1
               export AWS_LC_SYS_CMAKE_BUILDER=1
-
-              # The Nix toolchain ships its own macOS SDK plus an `xcrun` (from
-              # xcbuild) that only knows that SDK. Dioxus' iOS build needs the
-              # *real* Xcode toolchain (iPhoneSimulator/iPhoneOS SDKs, swift,
-              # simctl), so when Xcode is present:
-              #   1. route `xcrun` to the system binary via a PATH shim, and
-              #   2. use the real Xcode clang as the linker for the iOS Rust
-              #      targets (the Nix clang has no iPhoneOS SDK to link against).
-              # The apple-sdk setup hook already exports DEVELOPER_DIR/SDKROOT
-              # to the *Nix* SDK; keep them for host linking (the Nix `cc`
-              # wrapper derives its sysroot from DEVELOPER_DIR), but strip them
-              # inside the `xcrun` shim so the real Xcode tools resolve SDKs
-              # against `xcode-select`. The Nix developer dir has no iOS
-              # platforms, so without this `xcrun --show-sdk-path --sdk
-              # iphonesimulator` fails with exit 255.
-              if [ -x /usr/bin/xcrun ]; then
-                shimdir="$(mktemp -d)"
-                printf '%s\n' '#!/usr/bin/env bash' 'unset DEVELOPER_DIR SDKROOT' 'exec /usr/bin/xcrun "$@"' > "$shimdir/xcrun"
-                chmod +x "$shimdir/xcrun"
-                export PATH="$shimdir:$PATH"
-
-                for spec in "AARCH64_APPLE_IOS:iphoneos" "AARCH64_APPLE_IOS_SIM:iphonesimulator"; do
-                  sdk="''${spec##*:}"
-                  clang="$("$shimdir/xcrun" --sdk "$sdk" --find clang 2>/dev/null || true)"
-                  if [ -n "$clang" ]; then
-                    export "CARGO_TARGET_''${spec%%:*}_LINKER=$clang"
-                  fi
-                done
-              fi
             '';
           };
         };
