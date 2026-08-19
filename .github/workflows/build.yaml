@@ -15,17 +15,13 @@ env:
   # Optional, but reduces target directory size a lot.
   CARGO_PROFILE_DEV_DEBUG: 0
   CARGO_PROFILE_RELEASE_DEBUG: 0
-  # sccache: content-addressed compile cache, survives Cargo.lock changes.
-  RUSTC_WRAPPER: sccache
-  SCCACHE_DIR: ${{ github.workspace }}/.sccache
-  SCCACHE_CACHE_SIZE: 5G
 
 jobs:
   build-ios:
     runs-on: macos-latest
     permissions:
-          id-token: write
-          contents: read
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: DeterminateSystems/determinate-nix-action@v3
@@ -46,14 +42,13 @@ jobs:
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Cache Cargo registry, git deps, and sccache
+      - name: Cache Cargo registry and git deps
         uses: actions/cache@v4
         with:
           path: |
             .cargo-home/registry/index
             .cargo-home/registry/cache
             .cargo-home/git/db
-            .sccache
           key: v2-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-${{ hashFiles('flake.lock') }}
           restore-keys: |
             v2-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-
@@ -92,11 +87,7 @@ jobs:
           nix develop --accept-flake-config .#ios --command bash << 'EOF'
             set -euo pipefail
 
-            # 1. Clear sccache correctly and disable it inside Nix to allow native linking
-            sccache --clear-cache 2>/dev/null || sccache --stop-server 2>/dev/null || true
-            export RUSTC_WRAPPER=""
-
-            # 2. Configure SDK environment
+            # 1. Configure SDK environment
             export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
             export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path)"
 
@@ -104,7 +95,7 @@ jobs:
             export AWS_LC_SYS_STATIC=1
             export PATH="$HOME/.maestro/bin:$PATH"
 
-            # 3. Start `dx serve`
+            # 2. Start `dx serve`
             cd test-app
             dx serve --platform ios > ../dx_serve.log 2>&1 &
             DX_PID=$!
@@ -114,7 +105,7 @@ jobs:
 
             echo "Waiting for Dioxus build, backend server, and iOS simulator..."
 
-            # 4. Wait loop
+            # 3. Wait loop
             MAX_ATTEMPTS=120
             ATTEMPT=0
 
@@ -137,9 +128,10 @@ jobs:
 
             echo "Simulator booted and com.example.TestApp installed successfully!"
 
-            # 5. Run tests
+            # 4. Run tests
             maestro test .maestro/smoke.yaml
           EOF
+
       - name: Show target sizes
         if: always()
         run: |

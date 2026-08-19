@@ -1,19 +1,16 @@
 {
   # ── Binary Cache Configuration ─────────────────────────────────────────────
-    nixConfig = {
-      extra-substituters = [
-        "https://cache.nixos.org"
-        "https://nix-community.cachix.org"
-        # Add your own cache here, e.g.:
-        # "https://your-cache-name.cachix.org"
-      ];
-      extra-trusted-public-keys = [
-        "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-        "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-        # Add your cache public key here, e.g.:
-        # "your-cache-name.cachix.org-1:your-public-key-here"
-      ];
-    };
+  nixConfig = {
+    extra-substituters = [
+      "https://cache.nixos.org"
+      "https://nix-community.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+    ];
+  };
+
   inputs = {
     nixpkgs.url          = "github:nixos/nixpkgs/master";
     flake-parts.url      = "github:hercules-ci/flake-parts";
@@ -22,8 +19,8 @@
     android-nixpkgs = {
       url  = "github:tadfisher/android-nixpkgs/stable";
       inputs.nixpkgs.follows = "nixpkgs";
-    }; # Fixed: Added missing semicolon here
-    nci = { # Fixed: Changed 'nic' to 'nci' to match inputs.nci.flakeModule
+    };
+    nci = {
       url = "github:90-008/nix-cargo-integration";
       inputs.nixpkgs.follows = "nixpkgs";
     };
@@ -194,7 +191,6 @@
             targets    = [ "wasm32-unknown-unknown" ] ++ androidTargets ++ iosTargets;
           };
 
-          # Fixed: Defined explicit NDK version variable
           ndkVersion = "26.1.10909125";
 
           androidSdk = inputs.android-nixpkgs.sdk.${system} (p: with p; [
@@ -268,7 +264,6 @@
               openssl
               openssl.dev
               pkg-config
-              sccache
               alsa-lib
             ] ++ rustBuildInputs;
 
@@ -283,38 +278,38 @@
               LOCAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7; exit}')
             '';
           };
+
           devShells.ios = pkgs.mkShell {
-              name = "dioxus-ios";
+            name = "dioxus-ios";
 
-              packages = with pkgs; [
-                unifiedRustToolchain
-                inputs.dioxus-cli.packages.${system}.default
-                just
-                openssl
-                openssl.dev
-                pkg-config
-                sccache
+            packages = with pkgs; [
+              unifiedRustToolchain
+              inputs.dioxus-cli.packages.${system}.default
+              just
+              openssl
+              openssl.dev
+              pkg-config
 
-                # Required build tools for C/C++ dependencies like aws-lc-sys
-                cmake
-                ninja
-                gnused
-              ] ++ rustBuildInputs;
+              # Required build tools for C/C++ dependencies like aws-lc-sys
+              cmake
+              ninja
+              gnused
+            ] ++ rustBuildInputs;
 
-              shellHook = ''
-                export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
+            shellHook = ''
+              export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
 
-                # Locate Developer dir and simulator SDK if running on macOS
-                if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
-                  export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-                  export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null || true)"
-                fi
+              # Locate Developer dir and simulator SDK if running on macOS
+              if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
+                export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+                export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null || true)"
+              fi
 
-                # Force aws-lc-sys build flags
-                export AWS_LC_SYS_STATIC=1
-                export AWS_LC_SYS_CMAKE_BUILDER=1
-              '';
-            };
+              # Force aws-lc-sys build flags
+              export AWS_LC_SYS_STATIC=1
+              export AWS_LC_SYS_CMAKE_BUILDER=1
+            '';
+          };
         };
     };
 }
