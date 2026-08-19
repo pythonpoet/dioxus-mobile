@@ -304,9 +304,11 @@
               shellHook = ''
                 export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
 
-                # Prevent Nix Clang wrappers from overriding Apple SDKs
-                export CC="/usr/bin/clang"
-                export CXX="/usr/bin/clang++"
+                # Locate Developer dir and simulator SDK if running on macOS
+                if [ -d "/Applications/Xcode.app/Contents/Developer" ]; then
+                  export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+                  export SDKROOT="$(xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null || true)"
+                fi
 
                 # Force aws-lc-sys build flags
                 export AWS_LC_SYS_STATIC=1
