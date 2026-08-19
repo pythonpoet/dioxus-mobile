@@ -11,8 +11,11 @@ custom_manifest = "android/AndroidManifest.xml"
 [ios]
 deployment_target = "14.0"
 
+[ios.info_plist]
+NSMicrophoneUsageDescription = "Record audio for pronunciation checker"
+
 [ios.entitlements]
-aps-environment = "development"
+aps-environment = "development" # Change to "production" for release builds
 
 [web.app]
 

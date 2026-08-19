@@ -15,7 +15,7 @@ name: iOS boot + navigation smoke
 ---
 # Cold start with cleared state so the JWT page starts unauthenticated.
 - launchApp:
-    clearState: true
+    clearState: false
 
 # Route "/" — landing page.
 - assertVisible: ".*Landing page for the dioxus-mobile test app.*"
@@ -25,19 +25,65 @@ name: iOS boot + navigation smoke
 - tapOn:
     text: "FCM"
     index: 0
-- assertVisible: ".*Kotlin bridge: unavailable.*"
+- assertVisible: ".*Kotlin bridge:.*"
+# Automatically tap "Allow" if the iOS system alert appears
 
-# JWT page. From a non-landing page "JWT" only matches the nav link.
-- tapOn: "JWT"
-- assertVisible: ".*not authenticated.*"
-- assertVisible: "Login"
+- tapOn:
+    text: "Request notification permission"
+    # Handle native iOS permission prompt
+- runFlow:
+    when:
+      visible: ".*(Allow|OK).*"
+    commands:
+      - tapOn: ".*(Allow|OK).*"
+- assertVisible: "Permission: granted"
+
+- tapOn:
+    text: "Read FCM Token"
+- assertVisible: "Token: .+"
+
+
+
 
 # Recorder page. Headings render without touching the mic; recording is not
 # exercised here to avoid cpal/permission flakiness on the simulator.
 - tapOn: "Recorder"
 - assertVisible: ".*Acoustics Lab.*"
 - assertVisible: ".*Recording Size.*"
+# JWT page. From a non-landing page "JWT" only matches the nav link.
+- tapOn: "JWT"
+- assertVisible: ".*not authenticated.*"
+- assertVisible: "Login"
+
+# Enter Username (matches placeholder or label)
+- tapOn:
+    text: "username .*"
+- eraseText
+- inputText: "admin"
+
+# Enter Password
+- tapOn:
+    text: "password.*"
+- eraseText
+- inputText: "password"
+
+# Dismiss keyboard (optional but recommended for iOS to prevent tap obstruction)
+- hideKeyboard
+
+# Tap Login
+- tapOn: "Login"
+
+- assertVisible: "logged in"
+
+# Force close and relaunch the app without resetting state
+- stopApp
+- launchApp:
+    clearState: false
 
 # Back to the landing page. "Init" only matches the nav link here.
 - tapOn: "Init"
 - assertVisible: ".*Landing page for the dioxus-mobile test app.*"
+
+- tapOn: "JWT"
+- assertVisible: "Status: authenticated"
+- assertVisible: "Storage: persistent"

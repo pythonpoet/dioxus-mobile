@@ -85,6 +85,7 @@ jobs:
           set -euo pipefail
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          export MAESTRO_CLI_NO_ANALYTICS=1
 
       - name: Launch dx serve and Run Maestro Tests
         run: |
@@ -99,30 +100,51 @@ jobs:
 
             export AWS_LC_SYS_CMAKE_BUILDER=1
             export AWS_LC_SYS_STATIC=1
-
             export PATH="$HOME/.maestro/bin:$PATH"
 
-            # 1. Start `dx serve` in background so it launches simulator & keeps backend live
+            # 1. Start `dx serve` and redirect output to a log file
             cd test-app
-            dx serve --platform ios &
+            dx serve --platform ios > ../dx_serve.log 2>&1 &
             DX_PID=$!
             cd ..
 
-            # Automatically terminate `dx serve` background job when this step exits
+            # Clean up background server process when step finishes
             trap "kill -9 $DX_PID 2>/dev/null || true" EXIT
 
-            # 2. Wait for `dx serve` to boot simulator and install the app
-            echo "Waiting for dx serve to start the simulator and install the app..."
-            until xcrun simctl listapps booted 2>/dev/null | grep -q "CFBundleIdentifier"; do
+            echo "Waiting for Dioxus build, backend server, and iOS simulator..."
+
+            # 2. Wait loop with health checks & process liveness
+            MAX_ATTEMPTS=120 # 6 minutes max wait time
+            ATTEMPT=0
+
+            until xcrun simctl listapps booted 2>/dev/null | grep -q "com.example.TestApp"; do
+              # Check if dx serve process died unexpectedly
+              if ! kill -0 "$DX_PID" 2>/dev/null; then
+                echo "ERROR: 'dx serve' process died unexpectedly. Output log:"
+                cat dx_serve.log
+                exit 1
+              fi
+
+              ATTEMPT=$((ATTEMPT + 1))
+              if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
+                echo "ERROR: Timed out waiting for app installation. Output log:"
+                cat dx_serve.log
+                exit 1
+              fi
+
               sleep 3
             done
 
-            echo "Simulator booted and app installed successfully."
+            echo "Simulator booted and com.example.TestApp installed successfully!"
 
-            # 3. Run Maestro tests against the simulator launched by `dx serve`
+            # 3. Stream server logs in background during test run for debugging
+            tail -f dx_serve.log &
+            TAIL_PID=$!
+            trap "kill -9 $DX_PID $TAIL_PID 2>/dev/null || true" EXIT
+
+            # 4. Run Maestro tests
             maestro test .maestro/smoke.yaml
           '
-
       - name: Show target sizes
         if: always()
         run: |
