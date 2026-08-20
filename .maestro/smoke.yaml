@@ -76,7 +76,7 @@ name: iOS boot + navigation smoke
 - inputText: "password"
 
 # Dismiss keyboard (optional but recommended for iOS to prevent tap obstruction)
-- hideKeyboard
+# - hideKeyboard
 
 # Tap Login
 - tapOn: "Login"
