@@ -3,10 +3,10 @@
 # Prerequisites (on the macos runner, before `maestro test`):
 #   1. Build the app:  dx build --platform ios --release
 #   2. Boot a simulator and install the .app bundle (path lives under target/dx/):
-#        xcrun simctl boot booted 2>/dev/null || true
-#        xcrun simctl install booted <path>/<app>.app
+#       xcrun simctl boot booted 2>/dev/null || true
+#       xcrun simctl install booted <path>/<app>.app
 #   3. Run from the repo root:
-#        maestro test .maestro/smoke.yaml
+#       maestro test .maestro/smoke.yaml
 #
 # `appId` must match `[bundle].identifier` in test-app/Dioxus.toml, which is
 # what `dx build --platform ios` embeds into the generated Xcode project.
@@ -47,7 +47,8 @@ name: iOS boot + navigation smoke
 # Copy token text from screen and log it
 - copyTextFrom:
     text: "Token: .*"
-- evalScript: ${console.log("Parsed FCM Token Output: " + maestro.copiedText)}
+
+- evalScript: '${console.log("Parsed FCM Token Output: " + maestro.copiedText)}'
 
 - takeScreenshot: fcm_token_verified
 
