@@ -116,7 +116,7 @@ jobs:
             kill $DX_PID
             exit $MAESTRO_EXIT
           '
-          '
+
 
       - name: Show target sizes
         if: always()
