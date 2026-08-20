@@ -27,9 +27,10 @@ public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDel
         super.init()
     }
 
-    /// Load `GoogleService-Info.plist` from the main app bundle and configure Firebase from
-    /// it. The plist comes from the consuming app's `<app>/ios/GoogleService-Info.plist`, not
-    /// from a copy bundled inside this Swift package. Safe to call more than once.
+    /// Configure Firebase from `GoogleService-Info.plist`. dx only copies manganis assets
+    /// into the final `.app`, so dioxus-fcm declares the staged plist as an unhashed asset
+    /// and it lands at `App.app/assets/GoogleService-Info.plist`. The bundle root remains a
+    /// fallback for hand-rolled Xcode projects. Safe to call more than once.
     @objc public func nativeConfigure() {
         stateLock.lock()
         let alreadyConfigured = configured
@@ -52,16 +53,22 @@ public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDel
     }
 
     private func loadFirebaseOptions() -> FirebaseOptions? {
-        // Firebase expects the plist in the *app* bundle, not the Swift package bundle:
-        // dx installs the FcmPlugin dylib without its SwiftPM resources, so `Bundle.module`
-        // is empty at runtime. The consuming app's `<app>/ios/GoogleService-Info.plist` is the
-        // authoritative source and belongs at the main bundle root.
+        // dx does not copy `<app>/ios/GoogleService-Info.plist` on its own, and it installs
+        // the FcmPlugin dylib without its SwiftPM resource bundle, so `Bundle.module` is
+        // empty at runtime. dioxus-fcm instead declares the staged plist as a manganis
+        // asset (unhashed), which dx copies to `App.app/assets/`. Keep the main bundle root
+        // as a fallback for projects built directly with Xcode.
         guard let plistURL = Bundle.main.url(
-            forResource: "GoogleService-Info", withExtension: "plist"
+            forResource: "GoogleService-Info",
+            withExtension: "plist",
+            subdirectory: "assets"
+        ) ?? Bundle.main.url(
+            forResource: "GoogleService-Info",
+            withExtension: "plist"
         ), let options = FirebaseOptions(contentsOfFile: plistURL.path) else {
             NSLog(
-                "dioxus-fcm: GoogleService-Info.plist not found in the app bundle "
-                    + "(<app>/ios/GoogleService-Info.plist) — Firebase not configured"
+                "dioxus-fcm: GoogleService-Info.plist not found in App.app/assets/ "
+                    + "(or the bundle root) — Firebase not configured"
             )
             return nil
         }

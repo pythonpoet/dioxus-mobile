@@ -58,11 +58,13 @@ from your Apple/Firebase accounts before push actually works:
    your apps → Add app → iOS). Use the same bundle identifier as `[bundle] identifier`
    / `[ios] identifier` in your app's `Dioxus.toml`.
 2. Download the generated `GoogleService-Info.plist` and place it at
-   `<app>/ios/GoogleService-Info.plist` in your app's source tree — it is loaded from
-   the main app bundle at runtime. (`init_fcm()` detects a placeholder with
-   `GOOGLE_APP_ID = "REPLACE_ME"` and logs a warning instead of configuring Firebase,
-   so the app doesn't crash if you forget this step, but `request_token()` will always
-   return `Err(<message>)`.)
+   `<app>/ios/GoogleService-Info.plist` in your app's source tree. `dioxus-fcm`
+   stages that file via its build script and declares it as an unhashed manganis asset, so
+   `dx build --ios` copies it into `App.app/assets/GoogleService-Info.plist`; the
+   Swift bridge reads it from there (with the bundle root as a fallback).
+   (`init_fcm()` detects a placeholder with `GOOGLE_APP_ID = "REPLACE_ME"` and logs a
+   warning instead of configuring Firebase, so the app doesn't crash if you forget
+   this step, but `request_token()` will always return `Err(<message>)`.)
 3. Create an APNs Auth Key (.p8) in your Apple Developer account (Certificates,
    Identifiers & Profiles → Keys) and upload it in Firebase Console → Project
    Settings → Cloud Messaging → Apple app configuration → APNs Authentication Key.

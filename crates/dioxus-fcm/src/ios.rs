@@ -5,10 +5,24 @@
 //! compiles that package into a dynamic framework, and links it into the app bundle
 //! automatically at `dx build --ios` time — there's no Xcode project to hand-edit.
 //!
-//! Firebase needs `GoogleService-Info.plist`; the consuming app provides it at
-//! `<app>/ios/GoogleService-Info.plist` (loaded from the main app bundle at runtime).
+//! Firebase needs `GoogleService-Info.plist`. `build.rs` stages the consuming app's
+//! `<app>/ios/GoogleService-Info.plist` into
+//! `src/ios/plugin/Sources/Resources/GoogleService-Info.plist` for iOS targets, and the
+//! `#[used]` manganis asset below makes dx copy that staged file into the final app bundle
+//! at `App.app/assets/GoogleService-Info.plist` (dx only copies manganis assets; it never
+//! copies `<app>/ios/...` on its own). The Swift side reads it from there at runtime.
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
+/// `GoogleService-Info.plist` must live in the final iOS `.app`, but dx only copies
+/// manganis assets. Declare the staged plist as an unhashed asset so dx writes it to
+/// `App.app/assets/GoogleService-Info.plist`. The unhashed name is what the Swift
+/// `loadFirebaseOptions()` looks up at runtime.
+#[used]
+static GOOGLE_SERVICE_INFO_PLIST: manganis::Asset = manganis::asset!(
+    "src/ios/plugin/Sources/Resources/GoogleService-Info.plist",
+    manganis::AssetOptions::builder().with_hash_suffix(false)
+);
 
 #[manganis::ffi("src/ios/plugin")]
 unsafe extern "Swift" {
@@ -38,10 +52,14 @@ unsafe extern "Swift" {
 /// One retained plugin instance for the process lifetime. `Messaging.delegate` and
 /// `UNUserNotificationCenter.delegate` don't retain their delegate, so the Swift object
 /// backing this has to stay alive for callbacks (like token refresh) to keep firing.
-static PLUGIN: Lazy<FcmPlugin> =
-    Lazy::new(|| FcmPlugin::new().expect("failed to initialize the FcmPlugin Swift bridge"));
+static PLUGIN: LazyLock<FcmPlugin> =
+    LazyLock::new(|| FcmPlugin::new().expect("failed to initialize the FcmPlugin Swift bridge"));
 
 pub fn init_fcm() {
+    // Force the manganis asset/link-section into the final iOS executable. Without a
+    // runtime reference, an rlib's `#[used]` static can be dropped by the archive linker,
+    // and dx would never see (or copy) `GoogleService-Info.plist`.
+    std::hint::black_box(&GOOGLE_SERVICE_INFO_PLIST);
     if let Err(e) = native_configure(&*PLUGIN) {
         tracing::error!("dioxus-fcm: native_configure failed: {e}");
     }
