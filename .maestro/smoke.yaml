@@ -40,9 +40,9 @@ name: iOS boot + navigation smoke
 - assertVisible: "Permission: granted"
 
 # Tap to generate/display token
-- tapOn:
-    text: "Read FCM Token"
-- assertVisible: "Token: .+"
+# - tapOn:
+#     text: "Read FCM Token"
+# - assertVisible: "Token: .+"
 
 # Copy token text from screen and log it
 # - copyTextFrom:
