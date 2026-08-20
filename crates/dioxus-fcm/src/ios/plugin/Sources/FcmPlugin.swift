@@ -19,6 +19,7 @@ import UIKit
 @objc(FcmPlugin)
 public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDelegate {
     private var latestToken: String?
+    private var lastTokenError: String?
     private var configured = false
     private let stateLock = NSLock()
 
@@ -158,15 +159,21 @@ public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDel
     // MARK: Token
 
     /// Fetch the FCM token; blocks until Firebase delivers it (or times out).
-    /// Returns an empty string on error/timeout — Rust maps that to `None`.
+    /// Returns an empty string on error/timeout; `nativeLastTokenError()` exposes the
+    /// underlying native error for the Rust side to forward.
     @objc public func nativeRequestToken() -> String {
         stateLock.lock()
         let cached = latestToken
         stateLock.unlock()
-        if let cached, !cached.isEmpty { return cached }
+        if let cached, !cached.isEmpty {
+            lastTokenError = nil
+            return cached
+        }
 
         guard FirebaseApp.app() != nil else {
+            let message = "Firebase is not configured. Add <app>/ios/GoogleService-Info.plist and call init_fcm()."
             NSLog("dioxus-fcm: requestToken called before Firebase was configured")
+            lastTokenError = message
             return ""
         }
 
@@ -176,13 +183,25 @@ public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDel
         Messaging.messaging().token { token, error in
             if let token {
                 result = token
+                lastTokenError = nil
             } else if let error {
                 NSLog("dioxus-fcm: token fetch failed: \(error.localizedDescription)")
+                lastTokenError = error.localizedDescription
+            } else {
+                lastTokenError = "FCM returned neither a token nor an error"
             }
             semaphore.signal()
         }
 
-        _ = semaphore.wait(timeout: .now() + 15)
+        let waitResult = semaphore.wait(timeout: .now() + 15)
+        if result.isEmpty && waitResult == .timedOut {
+            lastTokenError = "Timed out waiting for FCM token (15s)"
+        }
         return result
+    }
+
+    /// Last error recorded by `nativeRequestToken()`; empty when the last call succeeded.
+    @objc public func nativeLastTokenError() -> String {
+        return lastTokenError ?? ""
     }
 }

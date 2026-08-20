@@ -6,7 +6,7 @@ use std::time::Duration;
 use tokio::sync::oneshot;
 
 // Mutex::new is const — no once_cell needed
-static PENDING_TOKEN: Mutex<Option<oneshot::Sender<String>>> = Mutex::new(None);
+static PENDING_TOKEN: Mutex<Option<oneshot::Sender<Result<String, String>>>> = Mutex::new(None);
 static PENDING_PERMISSION: Mutex<Option<oneshot::Sender<bool>>> = Mutex::new(None);
 
 /// Package baked into the crate by dioxus-fcm's build.rs, derived from the
@@ -167,7 +167,7 @@ pub extern "system" fn fcm_native_on_token(mut env: JNIEnv, _class: JClass, toke
             // take() first, drop guard, then send (no lock held during send)
             let tx = PENDING_TOKEN.lock().take();
             if let Some(tx) = tx {
-                let _ = tx.send(token.clone()); // Err = receiver timed out, fine
+                let _ = tx.send(Ok(token.clone())); // Err = receiver timed out, fine
             }
             crate::on_native_token(token); // broadcast for refresh events
         }
@@ -178,8 +178,9 @@ pub extern "system" fn fcm_native_on_token(mut env: JNIEnv, _class: JClass, toke
 pub extern "system" fn fcm_native_on_error(mut env: JNIEnv, _class: JClass, msg: JString) {
     if let Ok(s) = env.get_string(&msg) {
         let msg: String = s.into();
-        // Dropping the sender wakes the awaiter with RecvError → returns None
-        let _ = PENDING_TOKEN.lock().take();
+        if let Some(tx) = PENDING_TOKEN.lock().take() {
+            let _ = tx.send(Err(msg.clone()));
+        }
         crate::on_native_error(msg);
     }
 }
@@ -205,19 +206,18 @@ pub extern "system" fn fcm_native_on_permission_result(
 include!(concat!(env!("OUT_DIR"), "/generated_native.rs"));
 
 /// Ask the Kotlin side to fetch the FCM token.
-pub async fn request_token() -> Option<String> {
+pub async fn request_token() -> Result<String, String> {
     let (tx, rx) = oneshot::channel();
     *PENDING_TOKEN.lock() = Some(tx);
 
-    fire_request_token(); // old body, returns ()
+    fire_request_token();
 
     match tokio::time::timeout(Duration::from_secs(15), rx).await {
-        Ok(Ok(token)) => Some(token),
-        Ok(Err(_)) => None, // nativeOnError dropped the sender
+        Ok(Ok(result)) => result,
+        Ok(Err(_)) => Err("FCM token request was cancelled by the native layer".to_string()),
         Err(_) => {
-            *PENDING_TOKEN.lock() = None; // don't leak the slot
-            tracing::error!("request_token timed out");
-            None
+            *PENDING_TOKEN.lock() = None;
+            Err("request_token timed out".to_string())
         }
     }
 }
@@ -229,8 +229,11 @@ fn fire_request_token() {
     let context = unsafe { JObject::from_raw(ctx.context().cast()) };
 
     let Some(class) = get_fcm_class(&mut env) else {
-        tracing::error!("requestToken failed: could not resolve FcmService class");
-        *PENDING_TOKEN.lock() = None; // fail fast, wake the awaiter
+        let msg = "requestToken failed: could not resolve FcmService class".to_string();
+        tracing::error!("{msg}");
+        if let Some(tx) = PENDING_TOKEN.lock().take() {
+            let _ = tx.send(Err(msg));
+        }
         return;
     };
 
@@ -241,8 +244,11 @@ fn fire_request_token() {
         &[(&context).into()],
     ) {
         let detail = describe_pending_exception(&mut env);
-        tracing::error!("requestToken failed: {e:?} | java: {detail}");
-        *PENDING_TOKEN.lock() = None; // fail fast, wake the awaiter
+        let msg = format!("requestToken failed: {e:?} | java: {detail}");
+        tracing::error!("{msg}");
+        if let Some(tx) = PENDING_TOKEN.lock().take() {
+            let _ = tx.send(Err(msg));
+        }
     }
 }
 

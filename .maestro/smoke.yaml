@@ -20,6 +20,7 @@ name: iOS boot + navigation smoke
 # Route "/" — landing page.
 - assertVisible: ".*Landing page for the dioxus-mobile test app.*"
 
+- takeScreenshot: launch_verified
 # FCM page. On the landing page both the nav link and a card are labelled
 # "FCM"; the nav renders first in DOM order, so pin the first match.
 - tapOn:
@@ -38,9 +39,17 @@ name: iOS boot + navigation smoke
       - tapOn: ".*(Allow|OK).*"
 - assertVisible: "Permission: granted"
 
+# Extract text matching the token element and log it
+- runScript: |
+    // Fetch the element text matching the Token output
+    var tokenText = maestro.copiedText || output.text;
+    console.log("Parsed FCM Token Output: " + tokenText);
+
 - tapOn:
     text: "Read FCM Token"
 - assertVisible: "Token: .+"
+
+- takeScreenshot: fcm_token_verified
 
 
 

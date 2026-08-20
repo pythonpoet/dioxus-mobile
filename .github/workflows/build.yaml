@@ -20,7 +20,6 @@ env:
   RUSTC_WRAPPER: sccache
   SCCACHE_DIR: ${{ github.workspace }}/.sccache
   SCCACHE_CACHE_SIZE: 5G
-  MAESTRO_CLI_NO_ANALYTICS: 1
 
 
 jobs:
@@ -89,6 +88,7 @@ jobs:
           set -euo pipefail
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          export MAESTRO_CLI_NO_ANALYTICS=1
 
       - name: Launch dx serve and Run Maestro Tests
         run: |
@@ -106,47 +106,38 @@ jobs:
 
             export PATH="$HOME/.maestro/bin:$PATH"
 
+            # 1. Start dx serve in background and log to file
             cd test-app
             dx serve --platform ios > ../dx_serve.log 2>&1 &
             DX_PID=$!
             cd ..
 
-            cleanup() {
-              kill -9 "$DX_PID" 2>/dev/null || true
-              # Optional: xcrun simctl shutdown all 2>/dev/null || true
-            }
-            trap cleanup EXIT
+            # Automatically terminate dx serve when this step exits
+            trap "kill -9 $DX_PID 2>/dev/null || true" EXIT
 
+            # 2. Wait for dx serve to finish building and launch the app
             echo "Waiting for dx serve to build and launch the app..."
-
-            found=0
-            for _ in $(seq 1 600); do
-              if grep -q "launching app!" dx_serve.log 2>/dev/null; then
-                found=1
-                echo "App launched successfully."
-                break
-              fi
-
-              if ! kill -0 "$DX_PID" 2>/dev/null; then
-                echo "dx serve exited unexpectedly. Last log output:"
-                tail -n 100 dx_serve.log || true
-                exit 1
-              fi
-
+            until grep -q "launching app!" dx_serve.log 2>/dev/null; do
               sleep 3
             done
 
-            if [ "$found" -ne 1 ]; then
-              echo "Timed out waiting for dx serve to launch the app. Last log output:"
-              tail -n 100 dx_serve.log || true
-              exit 1
-            fi
+            echo "App launched successfully."
+            sleep 5  # Grace period for the app to fully initialize
 
-            sleep 5
-
-            maestro test .maestro/smoke.yaml
+            # 3. Run Maestro tests against the simulator launched by dx serve
+            mkdir -p maestro-output
+            maestro test --format junit --output maestro-output/report.xml .maestro/smoke.yaml
           '
 
+      - name: Upload Maestro Artifacts
+        uses: actions/upload-artifact@v4
+        if: always() # Ensures logs/screenshots upload even if Maestro tests fail
+        with:
+          name: maestro-test-results
+          path: |
+            maestro-output/
+            ~/.maestro/tests/
+          if-no-files-found: warn
 
       - name: Show target sizes
         if: always()

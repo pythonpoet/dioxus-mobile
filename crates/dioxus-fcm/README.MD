@@ -62,7 +62,7 @@ from your Apple/Firebase accounts before push actually works:
    the main app bundle at runtime. (`init_fcm()` detects a placeholder with
    `GOOGLE_APP_ID = "REPLACE_ME"` and logs a warning instead of configuring Firebase,
    so the app doesn't crash if you forget this step, but `request_token()` will always
-   return `None`.)
+   return `Err(<message>)`.)
 3. Create an APNs Auth Key (.p8) in your Apple Developer account (Certificates,
    Identifiers & Profiles → Keys) and upload it in Firebase Console → Project
    Settings → Cloud Messaging → Apple app configuration → APNs Authentication Key.
@@ -101,19 +101,36 @@ let probe = dioxus_fcm::kotlin_available();
 // Request notification permission — resolves with the user's choice
 let granted: bool = dioxus_fcm::request_notification_permission().await;
 
-// Fetch the FCM token — resolves once Firebase delivers it (None on error/timeout)
-if let Some(token) = dioxus_fcm::request_token().await {
-    // send the token to your server
+// Fetch the FCM token — resolves with the token or an error message
+match dioxus_fcm::request_token().await {
+    Ok(token) => {
+        // send the token to your server
+    }
+    Err(e) => {
+        // surface the native error (e.g. token_error.set(e))
+    }
 }
 ```
 
 Example button in Dioxus:
 
 ```rust
+let mut token = use_signal(|| None::<String>);
+let mut token_error = use_signal(String::new);
+
 button {
     onclick: move |_| async move {
         if dioxus_fcm::request_notification_permission().await {
-            token.set(dioxus_fcm::request_token().await);
+            match dioxus_fcm::request_token().await {
+                Ok(t) => {
+                    token.set(Some(t));
+                    token_error.set(String::new());
+                }
+                Err(e) => {
+                    token.set(None);
+                    token_error.set(e);
+                }
+            }
         }
     },
     "Enable notifications"

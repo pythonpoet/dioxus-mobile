@@ -38,20 +38,20 @@ pub(crate) fn on_native_error(msg: String) {
 
 // ---- Public API used by your Dioxus app ----
 
-/// Fetch the FCM token. Resolves once Firebase delivers (or fails).
+/// Fetch the FCM token. Resolves with the token or an error message.
 #[cfg(target_os = "android")]
-pub async fn request_token() -> Option<String> {
+pub async fn request_token() -> Result<String, String> {
     android::request_token().await
 }
 
 #[cfg(target_os = "ios")]
-pub async fn request_token() -> Option<String> {
+pub async fn request_token() -> Result<String, String> {
     ios::request_token().await
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub async fn request_token() -> Option<String> {
-    None
+pub async fn request_token() -> Result<String, String> {
+    Err("FCM is unavailable on this platform".to_string())
 }
 
 /// Request notification permission. Resolves with the user's choice.
