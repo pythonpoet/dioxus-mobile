@@ -11,7 +11,7 @@
 
   FcmPlugin.nativeConfigure() detects GOOGLE_APP_ID == "REPLACE_ME" and skips
   FirebaseApp.configure() (logging a warning instead of crashing), so request_token()
-  will always return None and request_notification_permission() will still work (it
+  will always return an Err(message) and request_notification_permission() will still work (it
   doesn't need Firebase) but won't be backed by a real FCM token.
 -->
 <plist version="1.0">
