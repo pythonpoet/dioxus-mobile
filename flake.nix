@@ -264,6 +264,7 @@
               openssl
               openssl.dev
               pkg-config
+              sccsache
               alsa-lib
             ] ++ rustBuildInputs;
 
@@ -289,6 +290,7 @@
               openssl
               openssl.dev
               pkg-config
+              sccsache
 
               # Required build tools for C/C++ dependencies like aws-lc-sys
               cmake
@@ -297,33 +299,15 @@
             ] ++ rustBuildInputs;
 
             shellHook = ''
-              export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
+            export RUST_SRC_PATH="${unifiedRustToolchain}/lib/rustlib/src/rust/library"
 
-              # Force aws-lc-sys build flags
-              export AWS_LC_SYS_STATIC=1
-              export AWS_LC_SYS_CMAKE_BUILDER=1
+            # Prevent Nix Clang wrappers from overriding Apple SDKs
+            export CC="/usr/bin/clang"
+            export CXX="/usr/bin/clang++"
 
-              # Keep the Nix DEVELOPER_DIR/SDKROOT so the Nix `cc` wrapper can
-              # link host build scripts/proc-macros. For iOS targets only, use
-              # the real Xcode toolchain:
-              #   * route `xcrun` to /usr/bin/xcrun (the Nix xcbuild xcrun only
-              #     knows the macOS SDK, so cc-rs' `--show-sdk-path --sdk
-              #     iphonesimulator` would exit 255), and
-              #   * point the iOS target compiler (cc-rs) and linker (rustc) at
-              #     real Xcode clang instead of the Nix wrapper.
-              if [ -x /usr/bin/xcrun ]; then
-                shimdir="$(mktemp -d)"
-                printf '%s\n' '#!/usr/bin/env bash' 'unset DEVELOPER_DIR SDKROOT' 'exec /usr/bin/xcrun "$@"' > "$shimdir/xcrun"
-                chmod +x "$shimdir/xcrun"
-                export PATH="$shimdir:$PATH"
-
-                export CARGO_TARGET_AARCH64_APPLE_IOS_LINKER="/usr/bin/clang"
-                export CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER="/usr/bin/clang"
-                export CC_aarch64_apple_ios="/usr/bin/clang"
-                export CC_aarch64_apple_ios_sim="/usr/bin/clang"
-                export CXX_aarch64_apple_ios="/usr/bin/clang++"
-                export CXX_aarch64_apple_ios_sim="/usr/bin/clang++"
-              fi
+            # Force aws-lc-sys build flags
+            export AWS_LC_SYS_STATIC=1
+            export AWS_LC_SYS_CMAKE_BUILDER=1
             '';
           };
         };

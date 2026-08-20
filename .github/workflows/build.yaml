@@ -16,6 +16,12 @@ env:
   CARGO_PROFILE_DEV_DEBUG: 0
   CARGO_PROFILE_RELEASE_DEBUG: 0
 
+    # sccache: content-addressed compile cache, survives Cargo.lock changes.
+  RUSTC_WRAPPER: sccache
+  SCCACHE_DIR: ${{ github.workspace }}/.sccache
+  SCCACHE_CACHE_SIZE: 5G
+
+
 jobs:
   build-ios:
     runs-on: macos-latest
@@ -49,6 +55,8 @@ jobs:
             .cargo-home/registry/index
             .cargo-home/registry/cache
             .cargo-home/git/db
+            .sccache
+
           key: v2-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-${{ hashFiles('flake.lock') }}
           restore-keys: |
             v2-${{ runner.os }}-${{ runner.arch }}-ios-${{ steps.rust.outputs.version }}-
@@ -82,53 +90,42 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
           export MAESTRO_CLI_NO_ANALYTICS=1
 
-      - name: Build iOS app and Run Maestro Tests
+      - name: Launch dx serve and Run Maestro Tests
         run: |
-          nix develop --accept-flake-config .#ios --command bash << 'EOF'
+          nix develop --accept-flake-config .#ios --command bash -lc '
             set -euo pipefail
 
-            # Toolchain selection is handled by the `.#ios` shell hook:
-            #   * host build scripts/proc-macros keep the Nix `cc` wrapper with
-            #     the Nix macOS SDK (DEVELOPER_DIR/SDKROOT are left untouched),
-            #     and
-            #   * iOS targets use real Xcode clang via target-scoped
-            #     CC_*/CARGO_TARGET_*_LINKER vars plus the `xcrun` PATH shim.
-            # Do NOT set DEVELOPER_DIR here: the Nix `cc` wrapper reads it for
-            # host linking and conflicts with its baked-in Nix SDK value.
+            export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+            unset CC CXX SDKROOT
+            export CC="/usr/bin/clang"
+            export CXX="/usr/bin/clang++"
+            export LD="/usr/bin/ld"
 
             export AWS_LC_SYS_CMAKE_BUILDER=1
             export AWS_LC_SYS_STATIC=1
-            export PATH="$HOME/.maestro/bin:$PATH"
-            export MAESTRO_CLI_NO_ANALYTICS=1
 
-            # 1. One-shot build. `dx build` exits when the build finishes
-            #    (deterministic pass/fail), unlike `dx serve`, which stays
-            #    alive and only starts building after printing its banner.
+            export PATH="$HOME/.maestro/bin:$PATH"
+
+            # 1. Start `dx serve` in background so it launches simulator & keeps backend live
             cd test-app
-            dx build --platform ios --release
+            dx serve --platform ios &
+            DX_PID=$!
             cd ..
 
-            APP="target/dx/test-app/release/ios/TestApp.app"
-            if [ ! -d "$APP" ]; then
-              echo "ERROR: expected app bundle not found: $APP"
-              find target/dx/test-app -maxdepth 4 -name '*.app' -print
-              exit 1
-            fi
+            # Automatically terminate `dx serve` background job when this step exits
+            trap "kill -9 $DX_PID 2>/dev/null || true" EXIT
 
-            # 2. Boot a simulator and block until it is fully booted.
-            UDID="$(xcrun simctl list devices available | grep -m1 -Eo '\([0-9A-F-]{36}\)' | tr -d '()')"
-            [ -n "$UDID" ] || { echo "ERROR: no available iOS simulator device"; exit 1; }
-            echo "Booting simulator: $UDID"
-            xcrun simctl boot "$UDID" 2>/dev/null || true
-            xcrun simctl bootstatus "$UDID" -b
-            open -a Simulator || true
+            # 2. Wait for `dx serve` to boot simulator and install the app
+            echo "Waiting for dx serve to start the simulator and install the app..."
+            until xcrun simctl listapps booted 2>/dev/null | grep -q "CFBundleIdentifier"; do
+              sleep 3
+            done
 
-            # 3. Install the freshly built app bundle.
-            xcrun simctl install "$UDID" "$APP"
+            echo "Simulator booted and app installed successfully."
 
-            # 4. Run the Maestro smoke test.
+            # 3. Run Maestro tests against the simulator launched by `dx serve`
             maestro test .maestro/smoke.yaml
-          EOF
+          '
 
       - name: Show target sizes
         if: always()
