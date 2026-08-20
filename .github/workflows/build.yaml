@@ -90,43 +90,64 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
           export MAESTRO_CLI_NO_ANALYTICS=1
 
-            - name: Launch dx serve and Run Maestro Tests
-              run: |
-                nix develop --accept-flake-config .#ios --command bash -lc '
-                  set -euo pipefail
+      - name: Launch dx serve and run Maestro tests
+        timeout-minutes: 30
+        run: |
+          nix develop --accept-flake-config .#ios --command bash -lc '
+            set -euo pipefail
 
-                  export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-                  unset CC CXX SDKROOT
-                  export CC="/usr/bin/clang"
-                  export CXX="/usr/bin/clang++"
-                  export LD="/usr/bin/ld"
+            export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+            unset CC CXX SDKROOT
+            export CC="/usr/bin/clang"
+            export CXX="/usr/bin/clang++"
+            export LD="/usr/bin/ld"
 
-                  export AWS_LC_SYS_CMAKE_BUILDER=1
-                  export AWS_LC_SYS_STATIC=1
+            export AWS_LC_SYS_CMAKE_BUILDER=1
+            export AWS_LC_SYS_STATIC=1
 
-                  export PATH="$HOME/.maestro/bin:$PATH"
+            export PATH="$HOME/.maestro/bin:$PATH"
 
-                  # 1. Start dx serve in background and log to file
-                  cd test-app
-                  dx serve --platform ios > ../dx_serve.log 2>&1 &
-                  DX_PID=$!
-                  cd ..
+            cd test-app
+            dx serve --platform ios > ../dx_serve.log 2>&1 &
+            DX_PID=$!
+            cd ..
 
-                  # Automatically terminate dx serve when this step exits
-                  trap "kill -9 $DX_PID 2>/dev/null || true" EXIT
+            cleanup() {
+              kill -9 "$DX_PID" 2>/dev/null || true
+              # Optional: xcrun simctl shutdown all 2>/dev/null || true
+            }
+            trap cleanup EXIT
 
-                  # 2. Wait for dx serve to finish building and launch the app
-                  echo "Waiting for dx serve to build and launch the app..."
-                  until grep -q "launching app!" dx_serve.log 2>/dev/null; do
-                    sleep 3
-                  done
+            echo "Waiting for dx serve to build and launch the app..."
 
-                  echo "App launched successfully."
-                  sleep 5  # Grace period for the app to fully initialize
+            found=0
+            for _ in $(seq 1 600); do
+              if grep -q "launching app!" dx_serve.log 2>/dev/null; then
+                found=1
+                echo "App launched successfully."
+                break
+              fi
 
-                  # 3. Run Maestro tests against the simulator launched by dx serve
-                  maestro test .maestro/smoke.yaml
-                '
+              if ! kill -0 "$DX_PID" 2>/dev/null; then
+                echo "dx serve exited unexpectedly. Last log output:"
+                tail -n 100 dx_serve.log || true
+                exit 1
+              fi
+
+              sleep 3
+            done
+
+            if [ "$found" -ne 1 ]; then
+              echo "Timed out waiting for dx serve to launch the app. Last log output:"
+              tail -n 100 dx_serve.log || true
+              exit 1
+            fi
+
+            sleep 5
+
+            cd ..
+            maestro test .maestro/smoke.yaml
+          '
 
 
       - name: Show target sizes
