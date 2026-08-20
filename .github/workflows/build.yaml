@@ -93,35 +93,29 @@ jobs:
       - name: Build iOS App & Run Maestro Tests
         run: |
           nix develop --accept-flake-config .#ios --command bash -lc '
-            set -euo pipefail
-
-            export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-            unset CC CXX SDKROOT
-            export CC="/usr/bin/clang"
-            export CXX="/usr/bin/clang++"
-            export LD="/usr/bin/ld"
-
-            export AWS_LC_SYS_CMAKE_BUILDER=1
-            export AWS_LC_SYS_STATIC=1
-            export PATH="$HOME/.maestro/bin:$PATH"
-
+            # 1. Start dx serve in the background and pipe output to a log file
             cd test-app
+            dx serve > /tmp/dx_serve.log 2>&1 &
+            DX_PID=$!
 
-            # 1. Build simulator app explicitly (non-blocking)
-            dx build --platform ios --simulator --release
+            echo "Waiting for app to launch in simulator..."
 
-            # 2. Boot simulator manually
-            SIM_ID=$(xcrun simctl create "Test-iPad" "iPad Air 11-inch (M3)" ios26.2 || xcrun simctl list devices | grep "iPad Air" | head -n 1 | awk -F '[()]' '{print $2}')
-            xcrun simctl boot "$SIM_ID" || true
+            # 2. Monitor the log until "launching app!" appears
+            until grep -q "launching app!" /tmp/dx_serve.log 2>/dev/null; do
+              sleep 2
+            done
 
-            # 3. Install built bundle directly onto simulator
-            APP_PATH=$(find ../target -name "*.app" | head -n 1)
-            xcrun simctl install "$SIM_ID" "$APP_PATH"
+            echo "App launched! Running Maestro tests..."
 
+            # 3. Execute your Maestro tests
             cd ..
+            maestro test .maestro/
+            MAESTRO_EXIT=$?
 
-            # 4. Run Maestro tests cleanly
-            maestro test .maestro/smoke.yaml
+            # 4. Clean up the background dx serve process when Maestro finishes
+            kill $DX_PID
+            exit $MAESTRO_EXIT
+          '
           '
 
       - name: Show target sizes
