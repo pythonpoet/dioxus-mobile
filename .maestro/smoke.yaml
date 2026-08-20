@@ -45,8 +45,8 @@ name: iOS boot + navigation smoke
 - assertVisible: "Token: .+"
 
 # Copy token text from screen and log it
-- copyTextFrom:
-    text: "Token: .*"
+# - copyTextFrom:
+#     text: "Token: .*"
 
 - evalScript: '${console.log("Parsed FCM Token Output: " + maestro.copiedText)}'
 
