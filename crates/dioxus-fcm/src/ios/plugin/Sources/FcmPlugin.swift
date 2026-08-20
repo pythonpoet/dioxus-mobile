@@ -183,12 +183,12 @@ public class FcmPlugin: NSObject, MessagingDelegate, UNUserNotificationCenterDel
         Messaging.messaging().token { token, error in
             if let token {
                 result = token
-                lastTokenError = nil
+                self.lastTokenError = nil
             } else if let error {
                 NSLog("dioxus-fcm: token fetch failed: \(error.localizedDescription)")
-                lastTokenError = error.localizedDescription
+                self.lastTokenError = error.localizedDescription
             } else {
-                lastTokenError = "FCM returned neither a token nor an error"
+                self.lastTokenError = "FCM returned neither a token nor an error"
             }
             semaphore.signal()
         }
