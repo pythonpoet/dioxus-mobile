@@ -106,37 +106,34 @@ jobs:
 
             export PATH="$HOME/.maestro/bin:$PATH"
 
-            # 1. Start dx serve unbuffered in background and log to file
+            # Create log and artifact directories
+            mkdir -p logs maestro-output
+
+            # 1. Start dx serve unbuffered in background
             cd test-app
-            stdbuf -oL -eL dx serve --platform ios > ../dx_serve.log 2>&1 &
+            stdbuf -oL -eL dx serve --platform ios > ../logs/dx_serve.log 2>&1 &
             DX_PID=$!
             cd ..
 
-            # Automatically terminate dx serve when this step exits
+            # Terminate dx serve reliably when script exits
             trap "kill -9 $DX_PID 2>/dev/null || true" EXIT
 
-            # 2. Wait for dx serve to finish building and launch the app
+            # 2. Wait for dx serve to finish building
             echo "Waiting for dx serve to build and launch the app..."
             while true; do
-              if grep -q "launching app!" dx_serve.log 2>/dev/null; then
+              if grep -q "launching app!" logs/dx_serve.log 2>/dev/null; then
                 break
               fi
 
-              if grep -q "Build failed" dx_serve.log 2>/dev/null; then
-                echo "Error: dx serve process exited with error." >&2
-                cat dx_serve.log >&2
-                exit 1
-              fi
-
-              if grep -q "ERROR dx build" dx_serve.log 2>/dev/null; then
-                echo "Error: dx serve process exited with error." >&2
-                cat dx_serve.log >&2
+              if grep -qE "Build failed|ERROR dx build" logs/dx_serve.log 2>/dev/null; then
+                echo "Error: dx serve process encountered a build error:" >&2
+                cat logs/dx_serve.log >&2
                 exit 1
               fi
 
               if ! kill -0 $DX_PID 2>/dev/null; then
-                echo "Error: dx serve process exited with error." >&2
-                cat dx_serve.log >&2
+                echo "Error: dx serve process died unexpectedly:" >&2
+                cat logs/dx_serve.log >&2
                 exit 1
               fi
 
@@ -144,20 +141,22 @@ jobs:
             done
 
             echo "App launched successfully."
-            sleep 5  # Grace period for the app to fully initialize
+            sleep 5  # Grace period for app initialization
 
-            # 3. Run Maestro tests against the simulator launched by dx serve
-            mkdir -p maestro-output
+            # 3. Run Maestro tests
+            echo "Running Maestro tests..."
             maestro test --format junit --output maestro-output/report.xml .maestro/smoke.yaml
           '
 
-      - name: Upload Maestro Artifacts
+      - name: Upload Maestro & Debug Logs
         uses: actions/upload-artifact@v4
-        if: always() # Ensures logs/screenshots upload even if Maestro tests fail
+        if: always() # Uploads logs regardless of test pass/fail
         with:
-          name: maestro-test-results
+          name: maestro-and-debug-logs
           path: |
+            logs/
             maestro-output/
+            ~/.maestro/logs/
             ~/.maestro/tests/
           if-no-files-found: warn
 
