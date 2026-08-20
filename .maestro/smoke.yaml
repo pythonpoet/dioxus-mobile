@@ -21,17 +21,17 @@ name: iOS boot + navigation smoke
 - assertVisible: ".*Landing page for the dioxus-mobile test app.*"
 
 - takeScreenshot: launch_verified
+
 # FCM page. On the landing page both the nav link and a card are labelled
 # "FCM"; the nav renders first in DOM order, so pin the first match.
 - tapOn:
     text: "FCM"
     index: 0
 - assertVisible: ".*Native bridge: switft inshallah"
-# Automatically tap "Allow" if the iOS system alert appears
 
+# Handle native iOS permission prompt
 - tapOn:
     text: "Request notification permission"
-    # Handle native iOS permission prompt
 - runFlow:
     when:
       visible: ".*(Allow|OK).*"
@@ -39,26 +39,24 @@ name: iOS boot + navigation smoke
       - tapOn: ".*(Allow|OK).*"
 - assertVisible: "Permission: granted"
 
-# Extract text matching the token element and log it
-- runScript: |
-    // Fetch the element text matching the Token output
-    var tokenText = maestro.copiedText || output.text;
-    console.log("Parsed FCM Token Output: " + tokenText);
-
+# Tap to generate/display token
 - tapOn:
     text: "Read FCM Token"
 - assertVisible: "Token: .+"
 
+# Copy token text from screen and log it
+- copyTextFrom:
+    text: "Token: .*"
+- evalScript: ${console.log("Parsed FCM Token Output: " + maestro.copiedText)}
+
 - takeScreenshot: fcm_token_verified
-
-
-
 
 # Recorder page. Headings render without touching the mic; recording is not
 # exercised here to avoid cpal/permission flakiness on the simulator.
 - tapOn: "Recorder"
 - assertVisible: ".*Acoustics Lab.*"
 - assertVisible: ".*Recording Size.*"
+
 # JWT page. From a non-landing page "JWT" only matches the nav link.
 - tapOn: "JWT"
 - assertVisible: ".*not authenticated.*"

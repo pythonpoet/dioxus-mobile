@@ -1,0 +1,492 @@
+  0.48s  INFO -----------------------------------------------------------------
+                Serving your app: test-app! 🚀
+                • Press [33m`ctrl+c`[0m to exit the server
+                • Press [33m`r`[0m to rebuild the app
+                • Press [33m`p`[0m to change hotreload mode
+                • Press [33m`v`[0m to toggle verbose logging
+                • Press [33m`/`[0m for more commands and shortcuts
+                Learn more at [34mhttps://dioxuslabs.com/learn/0.7/getting_started[0m
+               ----------------------------------------------------------------
+  0.48s  WARN Note: [33mRust hot-patching[0m is now enabled by default! Unexpected behavior might occur. Press `p` to change modes.
+  0.48s  INFO ios platform requires x86_64-apple-ios to be installed. Installing...
+  0.48s ERROR Build failed: No such file or directory (os error 2)
+  0.48s ERROR [31mBuild failed[0m: No such file or directory (os error 2)
+  0.85s  WARN error: failed to run custom build command for `ring v0.17.14` 
+  0.85s  WARN Caused by: 
+  0.85s  WARN   process didn't exit successfully: `/home/david/Documents/dioxus-mobile/target/server-dev/build/ring-8368d955823643be/build-script-build` (exit status: 1) 
+  0.85s  WARN   --- stdout 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_MANIFEST_DIR 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_PKG_NAME 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_PKG_VERSION_MAJOR 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_PKG_VERSION_MINOR 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_PKG_VERSION_PATCH 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_PKG_VERSION_PRE 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_MANIFEST_LINKS 
+  0.85s  WARN   cargo:rerun-if-env-changed=RING_PREGENERATE_ASM 
+  0.85s  WARN   cargo:rerun-if-env-changed=OUT_DIR 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_CFG_TARGET_ARCH 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_CFG_TARGET_OS 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_CFG_TARGET_ENV 
+  0.85s  WARN   cargo:rerun-if-env-changed=CARGO_CFG_TARGET_ENDIAN 
+  0.85s  WARN   cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu 
+  0.85s  WARN   CC_x86_64-unknown-linux-gnu = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu 
+  0.85s  WARN   CC_x86_64_unknown_linux_gnu = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=HOST_CC 
+  0.85s  WARN   HOST_CC = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CC 
+  0.85s  WARN   CC = Some(/usr/bin/clang) 
+  0.85s  WARN   cargo:rerun-if-env-changed=CC_KNOWN_WRAPPER_CUSTOM 
+  0.85s  WARN   CC_KNOWN_WRAPPER_CUSTOM = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT 
+  0.85s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  0.85s  WARN   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS 
+  0.85s  WARN   CRATE_CC_NO_DEFAULTS = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT 
+  0.85s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  0.85s  WARN   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS 
+  0.85s  WARN   CRATE_CC_NO_DEFAULTS = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  0.85s  WARN   CFLAGS = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  0.85s  WARN   HOST_CFLAGS = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  0.85s  WARN   CFLAGS_x86_64_unknown_linux_gnu = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu 
+  0.85s  WARN   CFLAGS_x86_64-unknown-linux-gnu = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  0.85s  WARN   CFLAGS = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  0.85s  WARN   HOST_CFLAGS = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  0.85s  WARN   CFLAGS_x86_64_unknown_linux_gnu = None 
+  0.85s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu 
+  0.85s  WARN   CFLAGS_x86_64-unknown-linux-gnu = None 
+  0.85s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  0.85s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  0.85s  WARN   --- stderr 
+  0.85s  WARN   error occurred in cc-rs: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  0.85s  WARN warning: build failed, waiting for other jobs to finish... 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Environment Variable found 'AWS_LC_SYS_CMAKE_BUILDER': '1' 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Value: 1 is true. 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Environment Variable found 'AWS_LC_SYS_STATIC': '1' 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Value: 1 is true. 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Environment Variable found 'CARGO_ENCODED_RUSTFLAGS': '' 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Emitting configuration: cargo:rustc-cfg=universal 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Building with: CMake 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Symbol Prefix: Some("aws_lc_0_44_0") 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Environment Variable found 'CMAKE': 'cmake' 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: CMAKE environment variable set: cmake 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Target platform: 'x86_64-unknown-linux-gnu' 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compilation of 'c11.c' failed - Err(Error { kind: ToolNotFound, message: "failed to find tool \"/usr/bin/clang\": No such file or directory (os error 2)" }). 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Environment Variable found 'CC': '/usr/bin/clang' 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Setting CC_x86_64_unknown_linux_gnu: /usr/bin/clang 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Environment Variable found 'CXX': '/usr/bin/clang++' 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Setting CXX_x86_64_unknown_linux_gnu: /usr/bin/clang++ 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang++": No such file or directory (os error 2) 
+  1.01s  WARN warning: aws-lc-sys@0.44.0: Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN error: failed to run custom build command for `aws-lc-sys v0.44.0` 
+  1.01s  WARN Caused by: 
+  1.01s  WARN   process didn't exit successfully: `/home/david/Documents/dioxus-mobile/target/server-dev/build/aws-lc-sys-ee8b407231dd4040/build-script-main` (exit status: 101) 
+  1.01s  WARN   --- stdout 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_PREFIX_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_PREFIX 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_PREGENERATING_BINDINGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_PREGENERATING_BINDINGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_EXTERNAL_BINDGEN_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_EXTERNAL_BINDGEN 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_ASM_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_ASM 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_PREBUILT_NASM_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_PREBUILT_NASM 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_C_STD_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_C_STD 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE_BUILDER_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE_BUILDER 
+  1.01s  WARN   cargo:warning=Environment Variable found 'AWS_LC_SYS_CMAKE_BUILDER': '1' 
+  1.01s  WARN   cargo:warning=Value: 1 is true. 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_PREGENERATED_SRC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_PREGENERATED_SRC 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SMALL_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SMALL 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_EFFECTIVE_TARGET_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_EFFECTIVE_TARGET 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_JITTER_ENTROPY_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_JITTER_ENTROPY 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_U1_BINDINGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_NO_U1_BINDINGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_INCLUDES_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_INCLUDES 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SANITIZER_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SANITIZER 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_LINK_WHOLE_ARCHIVE_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_LINK_WHOLE_ARCHIVE 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_STATIC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_STATIC 
+  1.01s  WARN   cargo:warning=Environment Variable found 'AWS_LC_SYS_STATIC': '1' 
+  1.01s  WARN   cargo:warning=Value: 1 is true. 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SYSTEM_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SYSTEM_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_USE_SYSTEM_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_USE_SYSTEM 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SYSTEM_BINDINGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SYSTEM_BINDINGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SYSTEM_SKIP_VERSION_CHECK_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_SYSTEM_SKIP_VERSION_CHECK 
+  1.01s  WARN   cargo:rerun-if-env-changed=CARGO_ENCODED_RUSTFLAGS 
+  1.01s  WARN   cargo:warning=Environment Variable found 'CARGO_ENCODED_RUSTFLAGS': '' 
+  1.01s  WARN   cargo:warning=Emitting configuration: cargo:rustc-cfg=universal 
+  1.01s  WARN   cargo:rustc-cfg=universal 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_INCLUDE_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_INCLUDE_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_LIB_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_LIB_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_NO_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=SYSROOT 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=OPENSSL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_NO_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_NO_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=SYSROOT 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_AWSLC_NO_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_AWSLC_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=LIBCRYPTO_AWSLC_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_STATIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_ALL_DYNAMIC 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_PATH 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_LIBDIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64-unknown-linux-gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR 
+  1.01s  WARN   Ignoring candidate AWS-LC at /nix/store/djbmc5jk7ggq5hhcb1g976iadjbs99hb-openssl-3.6.3-dev: AWS_LC_SYS_STATIC is set to request static linking, but only a dynamic crypto library was found in /nix/store/1mf3lj0mldr8732yvzjc12fig2407b3d-openssl-3.6.3/lib. 
+  1.01s  WARN   Expected one of: libcrypto.a, libcrypto-awslc.a 
+  1.01s  WARN   Provide the requested form at this location, or unset AWS_LC_SYS_STATIC to allow the available form. 
+  1.01s  WARN   Ignoring candidate AWS-LC at /nix/store/djbmc5jk7ggq5hhcb1g976iadjbs99hb-openssl-3.6.3-dev: AWS_LC_SYS_STATIC is set to request static linking, but only a dynamic crypto library was found in /nix/store/1mf3lj0mldr8732yvzjc12fig2407b3d-openssl-3.6.3/lib. 
+  1.01s  WARN   Expected one of: libcrypto.a, libcrypto-awslc.a 
+  1.01s  WARN   Provide the requested form at this location, or unset AWS_LC_SYS_STATIC to allow the available form. 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE 
+  1.01s  WARN   cargo:rerun-if-env-changed=CMAKE_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=CMAKE 
+  1.01s  WARN   cargo:warning=Building with: CMake 
+  1.01s  WARN   cargo:warning=Symbol Prefix: Some("aws_lc_0_44_0") 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE 
+  1.01s  WARN   cargo:rerun-if-env-changed=CMAKE_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=CMAKE 
+  1.01s  WARN   cargo:warning=Environment Variable found 'CMAKE': 'cmake' 
+  1.01s  WARN   cargo:warning=CMAKE environment variable set: cmake 
+  1.01s  WARN   cargo:warning=Target platform: 'x86_64-unknown-linux-gnu' 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE_GENERATOR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE_GENERATOR 
+  1.01s  WARN   cargo:rerun-if-env-changed=CMAKE_GENERATOR_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=CMAKE_GENERATOR 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_HOST_CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_HOST_CFLAGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CFLAGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_HOST_CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_HOST_CFLAGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CFLAGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE_TOOLCHAIN_FILE_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CMAKE_TOOLCHAIN_FILE 
+  1.01s  WARN   cargo:rerun-if-env-changed=CMAKE_TOOLCHAIN_FILE_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=CMAKE_TOOLCHAIN_FILE 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CC_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CC_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CC 
+  1.01s  WARN   HOST_CC = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC 
+  1.01s  WARN   CC = Some(/usr/bin/clang) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_KNOWN_WRAPPER_CUSTOM 
+  1.01s  WARN   CC_KNOWN_WRAPPER_CUSTOM = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS 
+  1.01s  WARN   CRATE_CC_NO_DEFAULTS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS 
+  1.01s  WARN   CRATE_CC_NO_DEFAULTS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  1.01s  WARN   CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  1.01s  WARN   HOST_CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CFLAGS_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CFLAGS_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  1.01s  WARN   CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  1.01s  WARN   HOST_CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CFLAGS_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CFLAGS_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CC_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CC_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CC 
+  1.01s  WARN   HOST_CC = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC 
+  1.01s  WARN   CC = Some(/usr/bin/clang) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_KNOWN_WRAPPER_CUSTOM 
+  1.01s  WARN   CC_KNOWN_WRAPPER_CUSTOM = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS 
+  1.01s  WARN   CRATE_CC_NO_DEFAULTS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS 
+  1.01s  WARN   CRATE_CC_NO_DEFAULTS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  1.01s  WARN   CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  1.01s  WARN   HOST_CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CFLAGS_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CFLAGS_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  1.01s  WARN   CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  1.01s  WARN   HOST_CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CFLAGS_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CFLAGS_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_FORCE_DISABLE 
+  1.01s  WARN   CC_FORCE_DISABLE = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CC_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CC_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CC 
+  1.01s  WARN   HOST_CC = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC 
+  1.01s  WARN   CC = Some(/usr/bin/clang) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_KNOWN_WRAPPER_CUSTOM 
+  1.01s  WARN   CC_KNOWN_WRAPPER_CUSTOM = None 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS 
+  1.01s  WARN   CRATE_CC_NO_DEFAULTS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN   cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS 
+  1.01s  WARN   CRATE_CC_NO_DEFAULTS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  1.01s  WARN   CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  1.01s  WARN   HOST_CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CFLAGS_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CFLAGS_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS 
+  1.01s  WARN   CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CFLAGS 
+  1.01s  WARN   HOST_CFLAGS = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu 
+  1.01s  WARN   CFLAGS_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu 
+  1.01s  WARN   CFLAGS_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   cargo:warning=Compilation of 'c11.c' failed - Err(Error { kind: ToolNotFound, message: "failed to find tool \"/usr/bin/clang\": No such file or directory (os error 2)" }). 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_HOST_CC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_HOST_CC 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CC 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CC 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=CC 
+  1.01s  WARN   cargo:warning=Environment Variable found 'CC': '/usr/bin/clang' 
+  1.01s  WARN   cargo:warning=Setting CC_x86_64_unknown_linux_gnu: /usr/bin/clang 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_HOST_CXX_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_HOST_CXX 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CXX_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=HOST_CXX 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CXX_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=AWS_LC_SYS_CXX 
+  1.01s  WARN   cargo:rerun-if-env-changed=CXX_x86_64_unknown_linux_gnu 
+  1.01s  WARN   cargo:rerun-if-env-changed=CXX 
+  1.01s  WARN   cargo:warning=Environment Variable found 'CXX': '/usr/bin/clang++' 
+  1.01s  WARN   cargo:warning=Setting CXX_x86_64_unknown_linux_gnu: /usr/bin/clang++ 
+  1.01s  WARN   CMAKE_TOOLCHAIN_FILE_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   CMAKE_TOOLCHAIN_FILE_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   HOST_CMAKE_TOOLCHAIN_FILE = None 
+  1.01s  WARN   CMAKE_TOOLCHAIN_FILE = None 
+  1.01s  WARN   CMAKE_GENERATOR_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   CMAKE_GENERATOR_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   HOST_CMAKE_GENERATOR = None 
+  1.01s  WARN   CMAKE_GENERATOR = None 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang++": No such file or directory (os error 2) 
+  1.01s  WARN   cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "/usr/bin/clang": No such file or directory (os error 2) 
+  1.01s  WARN   CMAKE_PREFIX_PATH_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   CMAKE_PREFIX_PATH_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   HOST_CMAKE_PREFIX_PATH = None 
+  1.01s  WARN   CMAKE_PREFIX_PATH = None 
+  1.01s  WARN   CMAKE_x86_64-unknown-linux-gnu = None 
+  1.01s  WARN   CMAKE_x86_64_unknown_linux_gnu = None 
+  1.01s  WARN   HOST_CMAKE = None 
+  1.01s  WARN   CMAKE = Some("cmake") 
+  1.01s  WARN   Not searching for unused variables given on the command line. 
+  1.01s  WARN   -- The C compiler identification is unknown 
+  1.01s  WARN   -- Configuring incomplete, errors occurred! 
+  1.01s  WARN   --- stderr 
+  1.01s  WARN   running: cd "/home/david/Documents/dioxus-mobile/target/x86_64-unknown-linux-gnu/server-dev/build/aws-lc-sys-c0f004130c11c5ad/out/build" && CMAKE_PREFIX_PATH="" LC_ALL="C" "cmake" "/home/david/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-lc-sys-0.44.0" "-B" "/home/david/Documents/dioxus-mobile/target/x86_64-unknown-linux-gnu/server-dev/build/aws-lc-sys-c0f004130c11c5ad/out/build" "-DBUILD_SHARED_LIBS=0" "-DBORINGSSL_PREFIX=aws_lc_0_44_0_" "-DBORINGSSL_PREFIX_HEADERS=/home/david/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-lc-sys-0.44.0/generated-include" "-DBUILD_TESTING=OFF" "-DBUILD_TOOL=OFF" "-DENABLE_SOURCE_MODIFICATION=OFF" "-DBUILD_LIBSSL=OFF" "-DDISABLE_PERL=ON" "-DDISABLE_GO=ON" "-DOPENSSL_SMALL=OFF" "-DCMAKE_C_STANDARD=99" "-DCMAKE_INSTALL_PREFIX=/home/david/Documents/dioxus-mobile/target/x86_64-unknown-linux-gnu/server-dev/build/aws-lc-sys-c0f004130c11c5ad/out" "-DCMAKE_C_FLAGS= -ffunction-sections -fdata-sections -fPIC -m64 --target=x86_64-unknown-linux-gnu -w" "-DCMAKE_C_COMPILER=/usr/bin/clang" "-DCMAKE_CXX_FLAGS= -ffunction-sections -fdata-sections -fPIC -m64 --target=x86_64-unknown-linux-gnu -w" "-DCMAKE_CXX_COMPILER=/usr/bin/clang++" "-DCMAKE_ASM_FLAGS= -ffunction-sections -fdata-sections -fPIC -m64 --target=x86_64-unknown-linux-gnu -w" "-DCMAKE_ASM_COMPILER=/usr/bin/clang" "-DCMAKE_BUILD_TYPE=Debug" "--no-warn-unused-cli" 
+  1.01s  WARN   CMake Error at CMakeLists.txt:7 (enable_language): 
+  1.01s  WARN     The CMAKE_C_COMPILER: 
+  1.01s  WARN       /usr/bin/clang 
+  1.01s  WARN     is not a full path to an existing compiler tool. 
+  1.01s  WARN     Tell CMake where to find the compiler by setting either the environment 
+  1.01s  WARN     variable "CC" or the CMake cache entry CMAKE_C_COMPILER to the full path to 
+  1.01s  WARN     the compiler, or to the compiler name if it is in the PATH. 
+  1.01s  WARN   thread 'main' (415012) panicked at /home/david/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmake-0.1.58/src/lib.rs:1132:5: 
+  1.01s  WARN   command did not execute successfully, got: exit status: 1 
+  1.01s  WARN   build script failed, must exit now 
+  1.01s  WARN   note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace 
+  1.01s ERROR Build failed: cargo build finished with errors for target: test-app [x86_64-unknown-linux-gnu]
+  1.01s ERROR [31mBuild failed[0m: cargo build finished with errors for target: test-app [x86_64-unknown-linux-gnu]
