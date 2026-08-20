@@ -90,7 +90,7 @@ jobs:
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
           export MAESTRO_CLI_NO_ANALYTICS=1
 
-      - name: Launch dx serve and Run Maestro Tests
+      - name: Build iOS App & Run Maestro Tests
         run: |
           nix develop --accept-flake-config .#ios --command bash -lc '
             set -euo pipefail
@@ -103,27 +103,24 @@ jobs:
 
             export AWS_LC_SYS_CMAKE_BUILDER=1
             export AWS_LC_SYS_STATIC=1
-
             export PATH="$HOME/.maestro/bin:$PATH"
 
-            # 1. Start `dx serve` in background so it launches simulator & keeps backend live
             cd test-app
-            dx serve --platform ios &
-            DX_PID=$!
+
+            # 1. Build simulator app explicitly (non-blocking)
+            dx build --platform ios --simulator --release
+
+            # 2. Boot simulator manually
+            SIM_ID=$(xcrun simctl create "Test-iPad" "iPad Air 11-inch (M3)" ios26.2 || xcrun simctl list devices | grep "iPad Air" | head -n 1 | awk -F '[()]' '{print $2}')
+            xcrun simctl boot "$SIM_ID" || true
+
+            # 3. Install built bundle directly onto simulator
+            APP_PATH=$(find ../target -name "*.app" | head -n 1)
+            xcrun simctl install "$SIM_ID" "$APP_PATH"
+
             cd ..
 
-            # Automatically terminate `dx serve` background job when this step exits
-            trap "kill -9 $DX_PID 2>/dev/null || true" EXIT
-
-            # 2. Wait for `dx serve` to boot simulator and install the app
-            echo "Waiting for dx serve to start the simulator and install the app..."
-            until xcrun simctl listapps booted 2>/dev/null | grep -q "CFBundleIdentifier"; do
-              sleep 3
-            done
-
-            echo "Simulator booted and app installed successfully."
-
-            # 3. Run Maestro tests against the simulator launched by `dx serve`
+            # 4. Run Maestro tests cleanly
             maestro test .maestro/smoke.yaml
           '
 
