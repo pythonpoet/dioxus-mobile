@@ -290,7 +290,7 @@
               openssl
               openssl.dev
               pkg-config
-              sccsache
+              sccache
 
               # Required build tools for C/C++ dependencies like aws-lc-sys
               cmake
