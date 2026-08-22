@@ -2,7 +2,7 @@ use jni::JNIEnv;
 use jni::objects::{GlobalRef, JClass, JObject, JString, JThrowable, JValue};
 use parking_lot::Mutex;
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::sync::oneshot;
 
 // Mutex::new is const — no once_cell needed
@@ -329,9 +329,45 @@ fn describe_pending_exception(env: &mut JNIEnv) -> String {
         }
     }
 }
+/// `ndk_context::android_context()` panics until the framework's `android_setup`
+/// callback runs. That callback fires from `WryActivity.onCreate` →
+/// `Rust.onActivityCreate` on the Android main thread, while `init_fcm` is called
+/// from the tao background thread that runs the app's `main` (`Rust.create()` is
+/// invoked before `Rust.onActivityCreate`, so on a cold start the background thread
+/// can reach this point first). Wait a bounded time for the context instead of
+/// panicking on the first probe.
+fn wait_for_android_context(timeout: Duration) -> ndk_context::AndroidContext {
+    let deadline = Instant::now() + timeout;
+
+    // `android_context()` panics until the framework initializes it. Silence the
+    // panic hook while probing so the expected first-probe panics don't spam stderr,
+    // then restore it before a real timeout panic.
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+
+    let context = loop {
+        match std::panic::catch_unwind(ndk_context::android_context) {
+            Ok(ctx) => break Some(ctx),
+            Err(_) if Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+            Err(_) => break None,
+        }
+    };
+
+    std::panic::set_hook(previous_hook);
+
+    match context {
+        Some(ctx) => ctx,
+        None => panic!(
+            "ndk_context was not initialized within {timeout:?}; Android activity setup did not complete"
+        ),
+    }
+}
+
 /// Initialize Firebase/App logic
 pub fn init_fcm() {
-    let ctx = ndk_context::android_context();
+    let ctx = wait_for_android_context(Duration::from_secs(10));
     let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.unwrap();
     let mut env = vm.attach_current_thread().unwrap();
 

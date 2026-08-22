@@ -98,7 +98,7 @@ block the main thread.
 dioxus_fcm::init_fcm();
 
 // Test the Rust ↔ Kotlin bridge (returns Some("inshallah"))
-let probe = dioxus_fcm::kotlin_available();
+let probe = dioxus_fcm::test_interface();
 
 // Request notification permission — resolves with the user's choice
 let granted: bool = dioxus_fcm::request_notification_permission().await;

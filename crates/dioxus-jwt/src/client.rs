@@ -226,10 +226,7 @@ impl fmt::Debug for JwtAuth {
 
 /// Print a diagnostic checkpoint without printing the JWT.
 ///
-/// `eprintln!` is used as well as `tracing` because early native startup
-/// failures can happen before a tracing subscriber is completely configured.
 fn diagnostic(message: impl fmt::Display) {
-    eprintln!("[dioxus-jwt] {message}");
 
     #[cfg(feature = "tracing")]
     tracing::debug!(target: "dioxus_jwt", "{message}");
@@ -237,7 +234,6 @@ fn diagnostic(message: impl fmt::Display) {
 
 /// Print an error diagnostic without printing the JWT.
 fn diagnostic_error(message: impl fmt::Display) {
-    eprintln!("[dioxus-jwt] ERROR: {message}");
 
     #[cfg(feature = "tracing")]
     tracing::error!(target: "dioxus_jwt", "{message}");
